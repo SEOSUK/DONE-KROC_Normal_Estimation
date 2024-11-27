@@ -82,11 +82,24 @@ def generate_launch_description():
         output='screen'
     )
 
+    # Custom Node: ign_pubsub
+    ign_pubsub_node = Node(
+        package='ros_gz_example_application',
+        executable='ign_pubsub',
+        name='ign_pubsub',
+        output='screen',
+        parameters=[
+            {'use_sim_time': True}
+        ]
+    )
+
+
     return LaunchDescription([
         gz_sim,
         DeclareLaunchArgument('rviz', default_value='true',
                               description='Open RViz.'),
         bridge,
         robot_state_publisher,
-        rviz
+        rviz,
+        ign_pubsub_node  # 추가된 ign_pubsub 노드        
     ])
