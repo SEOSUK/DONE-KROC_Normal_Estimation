@@ -3,234 +3,11 @@
     <model name="manipulator">
         <self_collide>true</self_collide>
         
-	<link name="base_ground">
-		<visual name="visual_base_ground">
-		<geometry>
-		    <box>
-		        <size>1 1 0.05</size>
-		    </box>
-		</geometry>
-		<material>
-		    <ambient>0.0 1.0 0.0 1.0</ambient>
-		    <diffuse>0.0 1.0 0.0 1.0</diffuse>
-		    <specular>0.5 0.5 0.5 1.0</specular>
-		</material>
-	    	</visual>
-        </link>
-        
-	<joint name="base_fixed" type="fixed">
-	    <parent>world</parent>
-	    <child>base_ground</child>
-	</joint>
-        
-	<joint name="roll_axis_joint" type="revolute">
-          <pose relative_to="drone_link">0 0 0 0 0 0</pose>	
-	  <parent>base_ground</parent>
-	  <child>pitch_axis_link</child>
-	  <axis>
-	    <xyz>1 0 0</xyz> <!-- Z축 -->
-    <use_parent_model_frame>true</use_parent_model_frame> <!-- 부모 프레임 기준 -->	    
-	    <limit>
-	      <lower>-10</lower>
-	      <upper>10</upper>
-	    </limit>
-	  </axis>
-        <dynamics>
-            <damping>10</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              	  
-	</joint>                
-
-	<link name="pitch_axis_link"/>
-	<joint name="pitch_axis_joint" type="revolute">
-          <pose relative_to="drone_link">0 0 0 0 0 0</pose>	
-	  <parent>pitch_axis_link</parent>
-	  <child>yaw_axis_link</child>
-	  <axis>
-	    <xyz>0 1 0</xyz> <!-- Z축 -->
-    <use_parent_model_frame>true</use_parent_model_frame> <!-- 부모 프레임 기준 -->	    
-	    <limit>
-	      <lower>-10</lower>
-	      <upper>10</upper>
-	    </limit>
-	  </axis>
-        <dynamics>
-            <damping>10</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              	  
-	</joint>         
-	       
-	<link name="yaw_axis_link"/>
-	<joint name="yaw_axis_joint" type="revolute">
-          <pose relative_to="drone_link">0 0 0 0 0 0</pose>	
-	  <parent>yaw_axis_link</parent>
-	  <child>x_axis_link</child>
-	  <axis>
-	    <xyz>0 0 1</xyz> <!-- Z축 -->
-    <use_parent_model_frame>true</use_parent_model_frame> <!-- 부모 프레임 기준 -->	    
-	    <limit>
-	      <lower>-10</lower>
-	      <upper>10</upper>
-	    </limit>
-	  </axis>
-        <dynamics>
-            <damping>10</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              	  
-	</joint>        
-        
-	<link name="x_axis_link">
-        </link>
-	<joint name="x_axis_joint" type="prismatic">
-          <pose relative_to="drone_link">0 0 0 0 0 0</pose>	
-	  <parent>x_axis_link</parent>
-	  <child>y_axis_link</child>
-	  <axis>
-	    <xyz>1 0 0</xyz> <!-- Z축 -->
-    <use_parent_model_frame>true</use_parent_model_frame> <!-- 부모 프레임 기준 -->	    
-	    <limit>
-	      <lower>-10</lower>
-	      <upper>10</upper>
-	    </limit>
-	  </axis>
-        <dynamics>
-            <damping>100</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              	  
-	</joint>        
-        
-
-	<link name="y_axis_link">
-        </link>
-	<joint name="y_axis_joint" type="prismatic">
-          <pose relative_to="drone_link">0 0 0 0 0 0</pose>	
-	  <parent>y_axis_link</parent>
-	  <child>z_axis_link</child>
-	  <axis>
-	    <xyz>0 1 0</xyz> <!-- Z축 -->
-    <use_parent_model_frame>true</use_parent_model_frame> <!-- 부모 프레임 기준 -->	    
-	    <limit>
-	      <lower>-10</lower>
-	      <upper>10</upper>
-	    </limit>
-	  </axis>
-        <dynamics>
-            <damping>10</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              
-	</joint>
-        
-	<link name="z_axis_link">
-        </link>
-	<joint name="z_axis_joint" type="prismatic">
-          <pose relative_to="drone_link">0 0 0 0 0 0</pose>	
-	  <parent>z_axis_link</parent>
-	  <child>drone_link</child>
-	  <axis>
-	    <xyz>0 0 1</xyz> <!-- Z축 -->
-    <use_parent_model_frame>true</use_parent_model_frame> <!-- 부모 프레임 기준 -->	    
-	    <limit>
-	      <lower>-10</lower>
-	      <upper>10</upper>
-	    </limit>
-	  </axis>
-        <dynamics>
-            <damping>10</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              	  
-	</joint>
-
-       
-        <plugin
-            filename="ignition-gazebo-joint-position-controller-system"
-            name="ignition::gazebo::systems::JointPositionController">
-            <joint_name>x_axis_joint</joint_name>
-	    <topic>x_axis/cmd</topic>
-	    <p_gain>300</p_gain>
-	    <i_gain>0.1</i_gain>
-	    <d_gain>0.1</d_gain>
-	    <i_max>1</i_max>
-	    <i_min>-1</i_min>
-	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>            
-        </plugin>               
-       
-        <plugin
-            filename="ignition-gazebo-joint-position-controller-system"
-            name="ignition::gazebo::systems::JointPositionController">
-            <joint_name>y_axis_joint</joint_name>
-	    <topic>y_axis/cmd</topic>
-	    <p_gain>300</p_gain>
-	    <i_gain>0.1</i_gain>
-	    <d_gain>0.1</d_gain>
-	    <i_max>1</i_max>
-	    <i_min>-1</i_min>
-	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>            
-        </plugin>        
-        
-        <plugin
-            filename="ignition-gazebo-joint-position-controller-system"
-            name="ignition::gazebo::systems::JointPositionController">
-            <joint_name>z_axis_joint</joint_name>
-	    <topic>z_axis/cmd</topic>
-	    <p_gain>300</p_gain>
-	    <i_gain>0.1</i_gain>
-	    <d_gain>0.1</d_gain>
-	    <i_max>1</i_max>
-	    <i_min>-1</i_min>
-	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>            
-        </plugin> 
-
-        <plugin
-            filename="ignition-gazebo-joint-position-controller-system"
-            name="ignition::gazebo::systems::JointPositionController">
-            <joint_name>roll_axis_joint</joint_name>
-	    <topic>roll_axis/cmd</topic>
-	    <p_gain>800</p_gain>
-	    <i_gain>1</i_gain>
-	    <d_gain>0.1</d_gain>
-	    <i_max>400</i_max>
-	    <i_min>-400</i_min>
-	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>            
-        </plugin>               
-
-        <plugin
-            filename="ignition-gazebo-joint-position-controller-system"
-            name="ignition::gazebo::systems::JointPositionController">
-            <joint_name>pitch_axis_joint</joint_name>
-	    <topic>pitch_axis/cmd</topic>
-	    <p_gain>800</p_gain>
-	    <i_gain>1</i_gain>
-	    <d_gain>0.1</d_gain>
-	    <i_max>400</i_max>
-	    <i_min>-400</i_min>
-	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>            
-        </plugin>               
-
-        <plugin
-            filename="ignition-gazebo-joint-position-controller-system"
-            name="ignition::gazebo::systems::JointPositionController">
-            <joint_name>yaw_axis_joint</joint_name>
-	    <topic>yaw_axis/cmd</topic>
-	    <p_gain>500</p_gain>
-	    <i_gain>0.1</i_gain>
-	    <d_gain>0.1</d_gain>
-	    <i_max>1</i_max>
-	    <i_min>-1</i_min>
-	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>            
-        </plugin>         
-                
-        
         <!-- Base Link -->
-        <link name="drone_link">
+        <link name="base_link">
             <pose>0 0 0 0 0 0</pose>
             <inertial>
-                <mass>0.5</mass>
+                <mass>1.0</mass>
                 <inertia>
                     <ixx>0.01</ixx>
                     <ixy>0.0</ixy>
@@ -274,14 +51,132 @@
             </visual>
         </link>
 
+
+
+
+
+
+
+        <!-- Dummy Links for Force Control -->
+        <link name="dummy_x">
+            <pose>0 0 0 0 0 0</pose>
+            <inertial>
+                <mass>0.01</mass>
+                <inertia>
+                    <ixx>0.001</ixx>
+                    <iyy>0.001</iyy>
+                    <izz>0.001</izz>
+                </inertia>
+            </inertial>
+        </link>
+
+        <link name="dummy_y">
+            <pose>0 0 0 0 0 0</pose>
+            <inertial>
+                <mass>0.01</mass>
+                <inertia>
+                    <ixx>0.001</ixx>
+                    <iyy>0.001</iyy>
+                    <izz>0.001</izz>
+                </inertia>
+            </inertial>
+        </link>
+
+        <link name="dummy_z">
+            <pose>0 0 0 0 0 0</pose>
+            <inertial>
+                <mass>0.01</mass>
+                <inertia>
+                    <ixx>0.001</ixx>
+                    <iyy>0.001</iyy>
+                    <izz>0.001</izz>
+                </inertia>
+            </inertial>
+        </link>
+
+        <!-- Prismatic Joints -->
+        <joint name="base_link_x_joint" type="prismatic">
+            <parent>base_link</parent>
+            <child>dummy_x</child>
+            <axis>
+                <xyz>1 0 0</xyz> <!-- X축 -->
+                <limit>
+                    <lower>-10</lower>
+                    <upper>10</upper>
+                </limit>
+            </axis>
+        </joint>
+
+        <joint name="base_link_y_joint" type="prismatic">
+            <parent>base_link</parent>
+            <child>dummy_y</child>
+            <axis>
+                <xyz>0 1 0</xyz> <!-- Y축 -->
+                <limit>
+                    <lower>-10</lower>
+                    <upper>10</upper>
+                </limit>
+            </axis>
+        </joint>
+
+        <joint name="base_link_z_joint" type="prismatic">
+            <parent>base_link</parent>
+            <child>dummy_z</child>
+          <use_parent_model_frame>1</use_parent_model_frame>            
+            <axis>
+                <xyz>0 0 1</xyz> <!-- Z축 -->
+            </axis>
+        </joint>
+
+        <!-- Thruster Plugins -->
+        <plugin
+            filename="ignition-gazebo-thruster-system"
+            name="ignition::gazebo::systems::Thruster">
+            <namespace>/model/manipulator</namespace>
+            <topic>/cmd_thrust_x</topic>
+            <joint_name>base_link_x_joint</joint_name>
+            <fluid_density>1.2</fluid_density>
+            <propeller_diameter>0.1</propeller_diameter>
+            <thrust_coefficient>1.0</thrust_coefficient>
+        </plugin>
+
+        <plugin
+            filename="ignition-gazebo-thruster-system"
+            name="ignition::gazebo::systems::Thruster">
+            <topic>/cmd_thrust_y</topic>
+            <joint_name>base_link_y_joint</joint_name>
+            <fluid_density>1.2</fluid_density>
+            <propeller_diameter>0.1</propeller_diameter>
+            <thrust_coefficient>1.0</thrust_coefficient>
+        </plugin>
+
+      <plugin
+        filename="ignition-gazebo-apply-joint-force-system"
+        name="ignition::gazebo::systems::ApplyJointForce">
+        <joint_name>base_link_z_joint</joint_name>
+        <topic>thrust_z/cmd</topic>
+      </plugin>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         <!-- Joint 1 -->
         <joint name="joint_1" type="revolute">
             <pose relative_to="link_1">0 0 -0.1 0 0 0</pose>                
-            <parent>drone_link</parent>
+            <parent>base_link</parent>
             <child>link_1</child>
             <axis>
                 <xyz>0 0 1</xyz>
-    <use_parent_model_frame>true</use_parent_model_frame> <!-- 부모 프레임 기준 -->                
                 <limit>
                     <lower>-1.57</lower>
                     <upper>1.57</upper>
@@ -345,7 +240,7 @@
         <link name="link_2">
             <pose relative_to="link_1">0 0 0.3 0 0 0</pose>
             <inertial>
-                <mass>2.0</mass>
+                <mass>1.0</mass>
                 <inertia>
 		    <ixx>0.084</ixx>
 		    <iyy>0.084</iyy>
@@ -381,7 +276,6 @@
             <child>link_2</child>
             <axis>
                 <xyz>1 0 0</xyz>
-    <use_parent_model_frame>true</use_parent_model_frame> <!-- 부모 프레임 기준 -->                
                 <limit>
                     <lower>-1.57</lower>
                     <upper>1.57</upper>
@@ -395,7 +289,6 @@
         </joint>
 
 
-        <!-- Joint Controller Plugin -->
         <plugin
             filename="ignition-gazebo-joint-position-controller-system"
             name="ignition::gazebo::systems::JointPositionController">
@@ -407,8 +300,8 @@
 	    <i_max>1</i_max>
 	    <i_min>-1</i_min>
 	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>
-        </plugin>
+  	    <cmd_min>-1000</cmd_min>            
+        </plugin> 
         
         <plugin
             filename="ignition-gazebo-joint-position-controller-system"
@@ -423,6 +316,7 @@
 	    <cmd_max>1000</cmd_max>
   	    <cmd_min>-1000</cmd_min>            
         </plugin> 
+        
 
     </model>
 </sdf>

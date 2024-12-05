@@ -37,6 +37,17 @@
       name="ros_gz_example_gazebo::FullSystem">
     </plugin>
 
+    <plugin
+      filename="ignition-gazebo-apply-link-wrench-system"
+      name="ignition::gazebo::systems::ApplyLinkWrench">
+      <persistent>
+        <entity_name>base_link</entity_name>
+        <entity_type>link</entity_type>
+        <force> 0 0 5</force> <!-- X 방향으로 10N의 힘 -->
+        <torque>0 0 0</torque> <!-- Z 방향으로 5Nm의 토크 -->
+      </persistent>
+    </plugin>
+
     <!-- 조명 설정 -->
     <light name="sun" type="directional">
       <cast_shadows>true</cast_shadows>

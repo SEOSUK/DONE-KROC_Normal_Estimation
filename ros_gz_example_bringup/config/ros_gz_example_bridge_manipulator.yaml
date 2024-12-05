@@ -19,38 +19,13 @@
   ros_type_name: "std_msgs/msg/Float64"
   gz_type_name: "gz.msgs.Double"
   direction: ROS_TO_GZ
+- ros_topic_name: "/thrust_z/command"
+  gz_topic_name: "/thrust_z/cmd"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ  
 - ros_topic_name: "/dynamic_pose/info"
   gz_topic_name: "/world/manipulator_world/dynamic_pose/info"
   ros_type_name: "geometry_msgs/msg/PoseArray"
   gz_type_name: "gz.msgs.Pose_V"
   direction: GZ_TO_ROS
-- ros_topic_name: "/x_axis/command"
-  gz_topic_name: "/x_axis/cmd"
-  ros_type_name: "std_msgs/msg/Float64"
-  gz_type_name: "gz.msgs.Double"
-  direction: ROS_TO_GZ
-- ros_topic_name: "/y_axis/command"
-  gz_topic_name: "/y_axis/cmd"
-  ros_type_name: "std_msgs/msg/Float64"
-  gz_type_name: "gz.msgs.Double"
-  direction: ROS_TO_GZ    
-- ros_topic_name: "/z_axis/command"
-  gz_topic_name: "/z_axis/cmd"
-  ros_type_name: "std_msgs/msg/Float64"
-  gz_type_name: "gz.msgs.Double"
-  direction: ROS_TO_GZ
-- ros_topic_name: "/roll_axis/command"
-  gz_topic_name: "/roll_axis/cmd"
-  ros_type_name: "std_msgs/msg/Float64"
-  gz_type_name: "gz.msgs.Double"
-  direction: ROS_TO_GZ    
-- ros_topic_name: "/pitch_axis/command"
-  gz_topic_name: "/pitch_axis/cmd"
-  ros_type_name: "std_msgs/msg/Float64"
-  gz_type_name: "gz.msgs.Double"
-  direction: ROS_TO_GZ  
-- ros_topic_name: "/yaw_axis/command"
-  gz_topic_name: "/yaw_axis/cmd"
-  ros_type_name: "std_msgs/msg/Float64"
-  gz_type_name: "gz.msgs.Double"
-  direction: ROS_TO_GZ  
