@@ -9,6 +9,11 @@
   ros_type_name: "sensor_msgs/msg/JointState"
   gz_type_name: "gz.msgs.Model"
   direction: GZ_TO_ROS
+- ros_topic_name: "/manipulator/imu"
+  gz_topic_name: "/world/manipulator_world/model/manipulator/link/link_yaw/sensor/imu_sensor/imu"
+  ros_type_name: "sensor_msgs/msg/Imu"
+  gz_type_name: "gz.msgs.IMU"
+  direction: GZ_TO_ROS  
 - ros_topic_name: "/joint_1/command"
   gz_topic_name: "/joint_1/cmd"
   ros_type_name: "std_msgs/msg/Float64"
@@ -19,13 +24,48 @@
   ros_type_name: "std_msgs/msg/Float64"
   gz_type_name: "gz.msgs.Double"
   direction: ROS_TO_GZ
-- ros_topic_name: "/thrust_z/command"
-  gz_topic_name: "/thrust_z/cmd"
+- ros_topic_name: "/joint_3/command"
+  gz_topic_name: "/joint_3/cmd"
   ros_type_name: "std_msgs/msg/Float64"
   gz_type_name: "gz.msgs.Double"
-  direction: ROS_TO_GZ  
+  direction: ROS_TO_GZ
+- ros_topic_name: "/joint_x/command"
+  gz_topic_name: "/model/manipulator/joint/joint_x/cmd_force"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "ignition.msgs.Double"
+  direction: ROS_TO_GZ    
+- ros_topic_name: "/joint_y/command"
+  gz_topic_name: "/model/manipulator/joint/joint_y/cmd_force"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "ignition.msgs.Double"
+  direction: ROS_TO_GZ        
+- ros_topic_name: "/joint_z/command"
+  gz_topic_name: "/model/manipulator/joint/joint_z/cmd_force"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "ignition.msgs.Double"
+  direction: ROS_TO_GZ      
+- ros_topic_name: "/joint_r/command"
+  gz_topic_name: "/model/manipulator/joint/joint_r/cmd_force"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "ignition.msgs.Double"
+  direction: ROS_TO_GZ    
+- ros_topic_name: "/joint_p/command"
+  gz_topic_name: "/model/manipulator/joint/joint_p/cmd_force"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "ignition.msgs.Double"
+  direction: ROS_TO_GZ        
+- ros_topic_name: "/joint_yaw/command"
+  gz_topic_name: "/model/manipulator/joint/joint_yaw/cmd_force"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "ignition.msgs.Double"
+  direction: ROS_TO_GZ    
 - ros_topic_name: "/dynamic_pose/info"
   gz_topic_name: "/world/manipulator_world/dynamic_pose/info"
   ros_type_name: "geometry_msgs/msg/PoseArray"
   gz_type_name: "gz.msgs.Pose_V"
   direction: GZ_TO_ROS
+- ros_topic_name: "/manipulator/pose_info"
+  gz_topic_name: "/world/manipulator_world/pose/info"
+  ros_type_name: "geometry_msgs/msg/PoseArray"
+  gz_type_name: "gz.msgs.Pose_V"
+  direction: GZ_TO_ROS  

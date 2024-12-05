@@ -7,6 +7,7 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "geometry_msgs/msg/pose.hpp"
+#include "sensor_msgs/msg/imu.hpp"  // IMU 메시지 타입 헤더
 #include <cmath>
 
 using namespace std::chrono_literals;
@@ -22,19 +23,22 @@ class ign_pubsub : public rclcpp::Node
     {
       cmd_joint1_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_1/command", 10);
       cmd_joint2_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_2/command", 10);      
-      x_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/x_axis/command", 10);                  
-      z_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/z_axis/command", 10);            
-      y_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/y_axis/command", 10);            
-      roll_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/roll_axis/command", 10);            
-      pitch_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/pitch_axis/command", 10);                  
-      yaw_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/yaw_axis/command", 10);            
+      cmd_joint3_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_3/command", 10);      
+      x_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_x/command", 10);            
+      y_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_y/command", 10);                        
+      z_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_z/command", 10);            
+      roll_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_r/command", 10);            
+      pitch_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_p/command", 10);                  
+      yaw_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_yaw/command", 10);            
         joint_state_subscriber_ = this->create_subscription<sensor_msgs::msg::JointState>(
             "/manipulator/joint_states", 10,
             std::bind(&ign_pubsub::joint_state_subsciber_callback, this, std::placeholders::_1));
-        body_state_subscriber_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
-            "/dynamic_pose/info", 10,
-            std::bind(&ign_pubsub::body_state_subscriber_callback, this, std::placeholders::_1));
-
+        link_yaw_imu_subscriber_ = this->create_subscription<sensor_msgs::msg::Imu>(
+            "/manipulator/imu", 10,
+            std::bind(&ign_pubsub::imu_subscriber_callback, this, std::placeholders::_1));
+        position_subscriber_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
+            "/manipulator/pose_info", 10,
+            std::bind(&ign_pubsub::global_pose_callback, this, std::placeholders::_1));            
 		
       timer_ = this->create_wall_timer(
       10ms, std::bind(&ign_pubsub::timer_callback, this));
@@ -45,127 +49,157 @@ class ign_pubsub : public rclcpp::Node
 	    {	//main loop, 100Hz
 		set_command();
 		data_publish();     
+		PID_controller();		
 	    }
-	    void set_command()
-	    {	//command generator
-    time_cnt++;
-    time = time_cnt / 100.0; // 100Hz 기준 시간 계산
 
+	void PID_controller()
+	{
+  x_error_integral += (x_axis_cmd - x_axis_meas);
+  y_error_integral += (y_axis_cmd - y_axis_meas);
+  z_error_integral += (z_axis_cmd - z_axis_meas);
+
+  x_axis_force_cmd  = 10* (x_axis_cmd - x_axis_meas) + 0. * x_error_integral;
+  y_axis_force_cmd  = 10* (y_axis_cmd - y_axis_meas) + 0. * y_error_integral;
+  z_axis_force_cmd  = 40 * (z_axis_cmd - z_axis_meas) + 0. * z_error_integral;
+	//error
+	roll_tau_cmd = 100 * (roll_axis_cmd - roll_meas) - 10 * roll_vel_meas;
+	pitch_tau_cmd = 100 * (pitch_axis_cmd - pitch_meas) - 10 * pitch_vel_meas;
+	yaw_tau_cmd = 100 * (yaw_axis_cmd - yaw_meas) - 10 * yaw_vel_meas;
+
+  RCLCPP_INFO(this->get_logger(), "%lf z_axis_meas: '%lf' z_axis_force_cmd: '%lf'", z_axis_cmd, z_axis_meas, z_axis_force_cmd);
+
+	}
+
+
+
+#include <cmath> // 수학 라이브러리
+
+void set_command()
+{
+    // 설정
+    double amplitude_joint_sine = 10.0 * M_PI / 180.0; // 진폭 10도 -> 라디안 변환
+    double period_joint1 = 2.0;                        // Joint 1 주기 (초)
+    double period_joint2 = 1.7;                        // Joint 2 주기 (초)
+    double period_joint3 = 1.3;                        // Joint 3 주기 (초)
+
+    time_cnt++;
+    double time = time_cnt / 100.0; // 100Hz 기준 시간 계산
+
+
+    // **구간별 동작**
     if (time < 5.0)
     {
-        // 0~5초: 초기 대기 상태
-        z_axis_cmd = 0.0;
-        y_axis_cmd = 0.0;
-        yaw_axis_cmd = 0.0;
-        joint_1_cmd = 0.0;
-        joint_2_cmd = 0.0;
-    }
-    else if (time < 8.0)
-    {
-        // 5~8초: Z축 3m 선형 상승
-        z_axis_cmd = (time - 5.0) / 3.0 * 3.0; // 3초 동안 0 -> 3m
-        y_axis_cmd = 0.0;
-        yaw_axis_cmd = 0.0;
-        joint_1_cmd = 0.0;
-        joint_2_cmd = 0.0;
+        // 0~5초: 대기 상태
+        return;
     }
     else if (time < 10.0)
     {
-        // 8~10초: 정지 상태
-        z_axis_cmd = 3.0; // 유지
-        y_axis_cmd = 0.0; // 유지
-        yaw_axis_cmd = 0.0; // 유지
-        joint_1_cmd = 0.0;
-        joint_2_cmd = 0.0;
+        // 5~10초: z = 5로 이동
+        z_axis_cmd = 5.0 * ((time - 5.0) / 5.0); // 선형 증가
     }
     else if (time < 15.0)
     {
-        // 10~15초: Y축 +3m 선형 이동
-        z_axis_cmd = 3.0; // 유지
-        y_axis_cmd = (time - 10.0) / 5.0 * 3.0; // 5초 동안 0 -> 3m
-        yaw_axis_cmd = 0.0; // 유지
-        joint_1_cmd = 0.0;
-        joint_2_cmd = 0.0;
+        // 10~15초: x = 5로 이동
+        z_axis_cmd = 5.0;                          // z 유지
+        x_axis_cmd = 5.0 * ((time - 10.0) / 5.0); // 선형 증가
     }
     else if (time < 20.0)
     {
-        // 15~20초: Y축 0m로 복귀
-        z_axis_cmd = 3.0; // 유지
-        y_axis_cmd = 3.0 - (time - 15.0) / 5.0 * 3.0; // 5초 동안 3m -> 0m
-        yaw_axis_cmd = 0.0; // 유지
-        joint_1_cmd = 0.0;
-        joint_2_cmd = 0.0;
+        // 15~20초: y = 5로 이동
+        z_axis_cmd = 5.0;                          // z 유지
+        x_axis_cmd = 5.0;                          // x 유지
+        y_axis_cmd = 5.0 * ((time - 15.0) / 5.0); // 선형 증가
     }
     else if (time < 25.0)
     {
-        // 20~25초: 대기
-        z_axis_cmd = 3.0; // 유지
-        y_axis_cmd = 0.0; // 유지
-        yaw_axis_cmd = 0.0; // 유지
-        joint_1_cmd = 0.0;
-        joint_2_cmd = 0.0;
+        // 20~25초: yaw = 45도 (pi/4)로 이동
+        z_axis_cmd = 5.0;                          // z 유지
+        x_axis_cmd = 5.0;                          // x 유지
+        y_axis_cmd = 5.0;                          // y 유지
+        yaw_axis_cmd = (M_PI / 4.0) * ((time - 20.0) / 5.0); // 선형 증가
     }
     else if (time < 30.0)
     {
-        // 25~30초: Yaw 방향 45도(π/4) 회전
-        z_axis_cmd = 3.0; // 유지
-        y_axis_cmd = 0.0; // 유지
-        yaw_axis_cmd = (time - 25.0) / 5.0 * (M_PI / 4); // 5초 동안 0 -> π/4
-        joint_1_cmd = 0.0;
-        joint_2_cmd = 0.0;
+        // 25~30초: x = 0, y = 0로 이동
+        z_axis_cmd = 5.0;                          // z 유지
+        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
+        x_axis_cmd = 5.0 * (1.0 - ((time - 25.0) / 5.0)); // 선형 감소
+        y_axis_cmd = 5.0 * (1.0 - ((time - 25.0) / 5.0)); // 선형 감소
+    }
+    else if (time < 35.0)
+    {
+        z_axis_cmd = 5.0;                          // z 유지
+        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
+        // 30~35초: joint_1 = 170도로 이동 (사인파 기반 궤적)
+        double t_normalized = (time - 30.0) / 5.0; // 현재 구간에서 0~1로 정규화
+        joint_1_cmd = (170.0 * M_PI / 180.0) * 0.5 * (1 - cos(M_PI * t_normalized)); // 사인파 궤적
+    }
+    else if (time < 40.0)
+    {
+        z_axis_cmd = 5.0;                          // z 유지
+        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
+        // 35~40초: joint_1 = 1도로 이동 (사인파 기반 궤적)
+        double t_normalized = (time - 35.0) / 5.0; // 현재 구간에서 0~1로 정규화
+        double joint_1_start = 170.0 * M_PI / 180.0;
+        double joint_1_end = 1.0 * M_PI / 180.0;
+        joint_1_cmd = joint_1_start + 0.5 * (joint_1_end - joint_1_start) * (1 - cos(M_PI * t_normalized)); // 사인파 궤적
     }
     else if (time < 45.0)
     {
-        // 30~45초: Joint 1, 2 Sine 파동
-        z_axis_cmd = 3.0; // 유지
-        y_axis_cmd = 0.0; // 유지
-        yaw_axis_cmd = M_PI / 4; // 유지
-        joint_1_cmd = 1.57 * std::sin(2 * M_PI * (time - 30.0) / 2.0); // Joint 1: 주기 2초, 진폭 1.57
-        joint_2_cmd = 1.57 * std::sin(2 * M_PI * (time - 30.0) / 3.0); // Joint 2: 주기 3초, 진폭 1.57
+        z_axis_cmd = 5.0;                          // z 유지
+        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
+        // 40~45초: joint_1 = 170도로 재이동 (사인파 기반 궤적)
+        double t_normalized = (time - 40.0) / 5.0; // 현재 구간에서 0~1로 정규화
+        double joint_1_start = 1.0 * M_PI / 180.0;
+        double joint_1_end = 170.0 * M_PI / 180.0;
+        joint_1_cmd = joint_1_start + 0.5 * (joint_1_end - joint_1_start) * (1 - cos(M_PI * t_normalized)); // 사인파 궤적
     }
-    else if (time < 50.0)
+    else if (time < 60.0)
     {
-        // 45~50초: Z축 착륙
-        z_axis_cmd = 3.0 - (time - 45.0) / 5.0 * 3.0; // 5초 동안 3m -> 0m
-        y_axis_cmd = 0.0; // 유지
-        yaw_axis_cmd = M_PI / 4; // 유지
-        joint_1_cmd = 0.0; // 정지
-        joint_2_cmd = 0.0; // 정지
+        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
+        z_axis_cmd = 5.0;                          // z 유지
+        // 45~60초: joint_1, joint_2, joint_3 Sine Wave
+        joint_1_cmd = amplitude_joint_sine * sin((2.0 * M_PI / period_joint1) * (time - 45.0)) + M_PI * 170 / 180;
+        joint_2_cmd = - amplitude_joint_sine * cos((2.0 * M_PI / period_joint2) * (time - 45.0)) + amplitude_joint_sine;
+        joint_3_cmd = - amplitude_joint_sine * cos((2.0 * M_PI / period_joint3) * (time - 45.0)) + amplitude_joint_sine;
     }
-    else
+    else if (time < 65.0)
     {
-        // 50초 이후: 모든 축 및 조인트 정지
-        z_axis_cmd = 0.0;
-        y_axis_cmd = 0.0;
-        yaw_axis_cmd = M_PI / 4; // 유지
-        joint_1_cmd = 0.0;
-        joint_2_cmd = 0.0;
+        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
+        // 60~70초: z = 0으로 선형 감소
+        z_axis_cmd = 5.0 * (1.0 - ((time - 55.0) / 10.0)); // 선형 감소
     }
+}
 
 
 
 
-		//TODO!!!
-	    }
+
+
+
+
+
+
+
 	    void data_publish()
 	    {	// publish!!
 	      joint_1_cmd_msg.data = joint_1_cmd;
 	      joint_2_cmd_msg.data = joint_2_cmd;
-	      roll_axis_msg.data = 0;	      
-	      pitch_axis_msg.data = 0;	      
-	      x_axis_msg.data = 0;	      
-	      z_axis_msg.data = z_axis_cmd;
-	      y_axis_msg.data = y_axis_cmd;
-	      yaw_axis_msg.data = yaw_axis_cmd;
-//	      RCLCPP_INFO(this->get_logger(), "joint_1_cmd: '%lf' joint_2_cmd: '%lf'", joint_1_cmd_msg.data, joint_2_cmd_msg.data);
-//	      RCLCPP_INFO(this->get_logger(), "joint_1_meas: '%lf' joint_2_meas: '%lf'", joint_1_meas_angle, joint_2_meas_angle);
-//	      RCLCPP_INFO(this->get_logger(), "joint_1_error: '%lf' joint_2_error: '%lf'", joint_1_cmd_msg.data - joint_1_meas_angle, joint_2_cmd_msg.data - joint_2_meas_angle);	      
+	      joint_3_cmd_msg.data = joint_3_cmd;	      
+	      roll_axis_msg.data = roll_tau_cmd;	      
+	      pitch_axis_msg.data = pitch_tau_cmd;	      
+	      yaw_axis_msg.data = yaw_tau_cmd;
+	      x_axis_msg.data = x_axis_force_cmd;	      
+	      y_axis_msg.data = y_axis_force_cmd;
+	      z_axis_msg.data = z_axis_force_cmd;
+	    //  RCLCPP_INFO(this->get_logger(), "joint_1_meas: '%lf' joint_2_meas: '%lf'", joint_1_meas_angle, joint_2_meas_angle);
 
 	      cmd_joint1_publisher_->publish(joint_1_cmd_msg);
 	      cmd_joint2_publisher_->publish(joint_2_cmd_msg);       
-	      x_axis_publisher_->publish(x_axis_msg);   	      
+	      cmd_joint3_publisher_->publish(joint_3_cmd_msg);       	      
+	      x_axis_publisher_->publish(x_axis_msg);   
+	      y_axis_publisher_->publish(y_axis_msg);   	      	      
 	      z_axis_publisher_->publish(z_axis_msg);   
-	      y_axis_publisher_->publish(y_axis_msg);   
 	      roll_axis_publisher_->publish(roll_axis_msg);   	
 	      pitch_axis_publisher_->publish(pitch_axis_msg);   	            
 	      yaw_axis_publisher_->publish(yaw_axis_msg);   
@@ -179,37 +213,70 @@ class ign_pubsub : public rclcpp::Node
 	    joint_2_meas_torque = msg->effort[8];	    
 	    }
  
-	     void body_state_subscriber_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
-	    {
-		for (size_t i = 0; i < msg->poses.size(); ++i)
-		{
-		    // Assuming pose name can be identified (adjust according to your custom message type)
-		    // Example assumes a pose name string field (you may need a custom message)
-		    std::string pose_name = ""; // Replace with the actual way to access pose name if available
+     void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
+    {
+    RCLCPP_INFO(this->get_logger(), "Received IMU data:");
 
-		    if (pose_name == "drone_body")
-		    {
-		        const auto &pose = msg->poses[i];
+    // 쿼터니언 값 가져오기
+    double qx = msg->orientation.x;
+    double qy = msg->orientation.y;
+    double qz = msg->orientation.z;
+    double qw = msg->orientation.w;
 
-		        // Extract position and orientation
-		        const auto &position = pose.position;
-		        const auto &orientation = pose.orientation;
+    // Roll, Pitch, Yaw 계산
+    roll_meas = std::atan2(2.0 * (qw * qx + qy * qz), 1.0 - 2.0 * (qx * qx + qy * qy));
+    pitch_meas = std::asin(2.0 * (qw * qy - qz * qx));
+    yaw_meas = std::atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz));
 
-		        RCLCPP_INFO(this->get_logger(), "Drone Body Pose:");
-		        RCLCPP_INFO(this->get_logger(), "Position: x=%.3f, y=%.3f, z=%.3f",
-		                    position.x, position.y, position.z);
-		        RCLCPP_INFO(this->get_logger(), "Orientation: x=%.3f, y=%.3f, z=%.3f, w=%.3f",
-		                    orientation.x, orientation.y, orientation.z, orientation.w);
+   roll_vel_meas = msg->angular_velocity.x;
+   pitch_vel_meas = msg->angular_velocity.y;
+   yaw_vel_meas = msg->angular_velocity.z;
 
-		        break; // Exit loop after finding the desired link
-		    }
-		}
-	    }
+    // RPY 출력
+  //  RCLCPP_INFO(this->get_logger(), "Orientation (RPY) - Roll: %.6f, Pitch: %.6f, Yaw: %.6f",
+  //             roll_meas, pitch_meas, yaw_meas);
+
+    // 각속도와 선가속도 출력
+  //  RCLCPP_INFO(this->get_logger(), "Angular Velocity - x: %.6f, y: %.6f, z: %.6f",
+  //              msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+  //  RCLCPP_INFO(this->get_logger(), "Linear Acceleration - x: %.6f, y: %.6f, z: %.6f",
+  //              msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+
+    }
+	    
+	    
+    void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
+    {
+        RCLCPP_INFO(this->get_logger(), "Received PoseArray message with %ld poses", msg->poses.size());
+
+        // link_yaw의 id는 7로 고정
+        const int link_yaw_id = 7;
+
+        if (link_yaw_id < msg->poses.size())
+        {
+            const auto &pose = msg->poses[link_yaw_id];
+     //       RCLCPP_INFO(this->get_logger(), "link_yaw Pose:");
+     //       RCLCPP_INFO(this->get_logger(), "Position - x: %.6f, y: %.6f, z: %.6f",
+     //                   pose.position.x, pose.position.y, pose.position.z);
+     //       RCLCPP_INFO(this->get_logger(), "Orientation - x: %.6f, y: %.6f, z: %.6f, w: %.6f",
+     //                   pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+	x_axis_meas = pose.position.x;
+	y_axis_meas = pose.position.y;
+	z_axis_meas = pose.position.z;                        
+        }
+        else
+        {
+            RCLCPP_WARN(this->get_logger(), "link_yaw id (17) is out of bounds in PoseArray.");
+        }
+    }
+	    
+	    
 
  
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint1_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint2_publisher_;
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint3_publisher_;    
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr x_axis_publisher_;        
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr z_axis_publisher_;    
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr y_axis_publisher_;    
@@ -217,30 +284,59 @@ class ign_pubsub : public rclcpp::Node
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pitch_axis_publisher_;           
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr yaw_axis_publisher_;    
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_;    
-    rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr body_state_subscriber_;
-
+    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr link_yaw_imu_subscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr position_subscriber_;
     size_t count_;
     std_msgs::msg::Float64 joint_1_cmd_msg;
     std_msgs::msg::Float64 joint_2_cmd_msg;
+    std_msgs::msg::Float64 joint_3_cmd_msg;    
     std_msgs::msg::Float64 x_axis_msg;      
-    std_msgs::msg::Float64 z_axis_msg;    
     std_msgs::msg::Float64 y_axis_msg;  
+    std_msgs::msg::Float64 z_axis_msg;    
     std_msgs::msg::Float64 roll_axis_msg;        
     std_msgs::msg::Float64 pitch_axis_msg;                      
     std_msgs::msg::Float64 yaw_axis_msg;        
     double joint_1_cmd;
     double joint_2_cmd;
+    double joint_3_cmd;    
+    double x_axis_force_cmd;
+    double y_axis_force_cmd;    
+    double z_axis_force_cmd;
+    double roll_tau_cmd;
+    double pitch_tau_cmd;
+    double yaw_tau_cmd;
+
     double x_axis_cmd;
     double y_axis_cmd;    
     double z_axis_cmd;
+    double roll_axis_cmd;
+    double pitch_axis_cmd;    
     double yaw_axis_cmd;
     
 
-    
+    double x_axis_meas;
+    double y_axis_meas;
+    double z_axis_meas;
     double joint_1_meas_angle;
     double joint_2_meas_angle;
     double joint_1_meas_torque;
     double joint_2_meas_torque;
+    double roll_meas;
+    double pitch_meas;
+    double yaw_meas;
+    double roll_vel_meas;
+    double pitch_vel_meas;
+    double yaw_vel_meas;
+    
+    double x_error_integral;
+    double y_error_integral;
+    double z_error_integral;
+    
+    double joint_1_temp;
+    double joint_2_temp;
+    double joint_3_temp;
+
+
     double time;
     double time_cnt;
     double sine;

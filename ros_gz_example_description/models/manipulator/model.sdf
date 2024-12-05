@@ -1,47 +1,202 @@
 <?xml version="1.0" ?>
 <sdf version="1.8">
     <model name="manipulator">
-        <self_collide>true</self_collide>
-        
-        <!-- Base Link -->
-        <link name="base_link">
-            <pose>0 0 0 0 0 0</pose>
-            <inertial>
-                <mass>1.0</mass>
-                <inertia>
-                    <ixx>0.01</ixx>
-                    <ixy>0.0</ixy>
-                    <ixz>0.0</ixz>
-                    <iyy>0.01</iyy>
-                    <iyz>0.0</iyz>
-                    <izz>0.01</izz>
-                </inertia>
-            </inertial>
-            <visual name="visual_base">
-                <geometry>
-                    <box>
-                        <size>0.7 0.7 0.05</size>
-                    </box>
-                </geometry>
-                <material>
-                    <ambient>0.0 1.0 0.0 1.0</ambient>
-                    <diffuse>0.0 1.0 0.0 1.0</diffuse>
-                    <specular>0.5 0.5 0.5 1.0</specular>
-                </material>
-            </visual>
-            <collision name="collision_base">
-                <geometry>
-                    <box>
-                        <size>1 1 0.1</size>
-                    </box>
-                </geometry>
-            </collision>
+      <pose>0 0 0.005 0 0 0</pose>
+
+    <!-- For drone -->      
+    <!-- For drone -->      
+    <!-- For drone -->        
+	<joint name="fixed_joint" type="fixed">
+	  <parent>world</parent> <!-- 월드와 연결 -->
+	  <child>base_link</child>    <!-- 고정할 링크 -->
+	</joint>      
+      <link name="base_link">
+        <pose>0.0 0.0 0.0 0 0 0</pose>
+        <inertial>
+          <inertia>
+            <ixx>2.501</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>2.501</iyy>
+            <iyz>0</iyz>
+            <izz>5</izz>
+          </inertia>
+          <mass>120.0</mass>
+        </inertial>
+        <visual name="base_visual">
+          <pose>0.0 0.0 0.0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>5 5 0.01</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>1.0 0.0 0.0 1</ambient>
+            <diffuse>1.0 0.0 0.0 1</diffuse>
+            <specular>1.0 0.0 0.0 1</specular>
+          </material>
+        </visual>
+        <collision name="base_collision">
+          <pose>0.0 0.0 0.0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.5 0.5 0.01</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+      
+      <link name="link_x"/>
+      <link name="link_y"/>
+      <link name="link_z"/>
+      <link name="link_r"/>
+      <link name="link_p"/>      
+      <joint name="joint_x" type="prismatic">
+          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
+        <parent>base_link</parent>
+        <child>link_x</child>
+        <axis>
+          <xyz>1 0 0</xyz>
+          <dynamics>
+            <damping>10</damping>
+          </dynamics>
+        </axis>
+      </joint>
+      <plugin
+        filename="gz-sim-apply-joint-force-system"
+        name="gz::sim::systems::ApplyJointForce">
+        <joint_name>joint_x</joint_name>
+      </plugin>
+      
+      <joint name="joint_y" type="prismatic">
+          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
+        <pose>0 0 -0.5 0 0 0</pose>
+        <parent>link_x</parent>
+        <child>link_y</child>
+        <axis>
+          <xyz>0 1 0</xyz>
+          <dynamics>
+            <damping>10</damping>
+          </dynamics>
+        </axis>
+      </joint>
+      <plugin
+        filename="gz-sim-apply-joint-force-system"
+        name="gz::sim::systems::ApplyJointForce">
+        <joint_name>joint_y</joint_name>
+      </plugin>
+      
+      <joint name="joint_z" type="prismatic">
+          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
+        <pose>0 0 -0.5 0 0 0</pose>
+        <parent>link_y</parent>
+        <child>link_z</child>
+        <axis>
+          <xyz>0 0 1</xyz>
+          <dynamics>
+            <damping>10</damping>
+          </dynamics>
+        </axis>
+      </joint>
+      <plugin
+        filename="gz-sim-apply-joint-force-system"
+        name="gz::sim::systems::ApplyJointForce">
+        <joint_name>joint_z</joint_name>
+      </plugin>            
+
+      <joint name="joint_r" type="revolute">
+          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
+        <pose>0 0 -0.5 0 0 0</pose>
+        <parent>link_z</parent>
+        <child>link_r</child>
+        <axis>
+          <xyz>1 0 0</xyz>
+          <dynamics>
+            <damping>5</damping>
+          </dynamics>
+        </axis>
+      </joint>
+      <plugin
+        filename="gz-sim-apply-joint-force-system"
+        name="gz::sim::systems::ApplyJointForce">
+        <joint_name>joint_r</joint_name>
+      </plugin>
+      
+      <joint name="joint_p" type="revolute">
+          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
+        <pose>0 0 -0.5 0 0 0</pose>
+        <parent>link_r</parent>
+        <child>link_p</child>
+        <axis>
+          <xyz>0 1 0</xyz>
+          <dynamics>
+            <damping>5</damping>
+          </dynamics>
+        </axis>
+      </joint>
+      <plugin
+        filename="gz-sim-apply-joint-force-system"
+        name="gz::sim::systems::ApplyJointForce">
+        <joint_name>joint_p</joint_name>
+      </plugin>
+      
+      <joint name="joint_yaw" type="revolute">
+          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>
+        <parent>link_p</parent>
+        <child>link_yaw</child>
+        <axis>
+          <xyz>0 0 1</xyz>
+          <dynamics>
+            <damping>5</damping>
+          </dynamics>
+        </axis>
+      </joint>
+      <plugin
+        filename="gz-sim-apply-joint-force-system"
+        name="gz::sim::systems::ApplyJointForce">
+        <joint_name>joint_yaw</joint_name>
+	<topic>joint_yaw/cmd</topic>        
+      </plugin>                  
+      
+      <link name="link_yaw">
+        <pose>0.0 0.0 0.15 0.0 0 0</pose>
+        <inertial>
+          <inertia>
+            <ixx>0.032</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.032</iyy>
+            <iyz>0</iyz>
+            <izz>0.00012</izz>
+          </inertia>
+          <mass>0.6</mass>
+        </inertial>
+        <visual name="visual">
+            <pose relative_to="link_yaw">0 0 0 0 0 0</pose>                                    
+          <geometry>
+            <box>
+              <size>0.7 0.7 0.3</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.0 0.0 1.0 1</ambient>
+            <diffuse>0.0 0.0 1.0 1</diffuse>
+            <specular>0.0 0.0 1.0 1</specular>
+          </material>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>0.7 0.7 0.3</size>
+            </box>
+          </geometry>
+        </collision>
             <!-- Joint 1 Visual (Sphere) -->
             <visual name="visual_joint_1">
-            <pose relative_to="link_1">0 0 -0.1 0 0 0</pose>                            
+            <pose relative_to="link_yaw">0 0 0.15 0 0 0</pose>                        
                 <geometry>
                     <sphere>
-                        <radius>0.07</radius>
+                        <radius>0.05</radius>
                     </sphere>
                 </geometry>
                 <material>
@@ -49,137 +204,22 @@
                     <diffuse>1.0 1.0 0.0 1.0</diffuse>
                 </material>
             </visual>
-        </link>
-
-
-
-
-
-
-
-        <!-- Dummy Links for Force Control -->
-        <link name="dummy_x">
-            <pose>0 0 0 0 0 0</pose>
-            <inertial>
-                <mass>0.01</mass>
-                <inertia>
-                    <ixx>0.001</ixx>
-                    <iyy>0.001</iyy>
-                    <izz>0.001</izz>
-                </inertia>
-            </inertial>
-        </link>
-
-        <link name="dummy_y">
-            <pose>0 0 0 0 0 0</pose>
-            <inertial>
-                <mass>0.01</mass>
-                <inertia>
-                    <ixx>0.001</ixx>
-                    <iyy>0.001</iyy>
-                    <izz>0.001</izz>
-                </inertia>
-            </inertial>
-        </link>
-
-        <link name="dummy_z">
-            <pose>0 0 0 0 0 0</pose>
-            <inertial>
-                <mass>0.01</mass>
-                <inertia>
-                    <ixx>0.001</ixx>
-                    <iyy>0.001</iyy>
-                    <izz>0.001</izz>
-                </inertia>
-            </inertial>
-        </link>
-
-        <!-- Prismatic Joints -->
-        <joint name="base_link_x_joint" type="prismatic">
-            <parent>base_link</parent>
-            <child>dummy_x</child>
-            <axis>
-                <xyz>1 0 0</xyz> <!-- X축 -->
-                <limit>
-                    <lower>-10</lower>
-                    <upper>10</upper>
-                </limit>
-            </axis>
-        </joint>
-
-        <joint name="base_link_y_joint" type="prismatic">
-            <parent>base_link</parent>
-            <child>dummy_y</child>
-            <axis>
-                <xyz>0 1 0</xyz> <!-- Y축 -->
-                <limit>
-                    <lower>-10</lower>
-                    <upper>10</upper>
-                </limit>
-            </axis>
-        </joint>
-
-        <joint name="base_link_z_joint" type="prismatic">
-            <parent>base_link</parent>
-            <child>dummy_z</child>
-          <use_parent_model_frame>1</use_parent_model_frame>            
-            <axis>
-                <xyz>0 0 1</xyz> <!-- Z축 -->
-            </axis>
-        </joint>
-
-        <!-- Thruster Plugins -->
-        <plugin
-            filename="ignition-gazebo-thruster-system"
-            name="ignition::gazebo::systems::Thruster">
-            <namespace>/model/manipulator</namespace>
-            <topic>/cmd_thrust_x</topic>
-            <joint_name>base_link_x_joint</joint_name>
-            <fluid_density>1.2</fluid_density>
-            <propeller_diameter>0.1</propeller_diameter>
-            <thrust_coefficient>1.0</thrust_coefficient>
-        </plugin>
-
-        <plugin
-            filename="ignition-gazebo-thruster-system"
-            name="ignition::gazebo::systems::Thruster">
-            <topic>/cmd_thrust_y</topic>
-            <joint_name>base_link_y_joint</joint_name>
-            <fluid_density>1.2</fluid_density>
-            <propeller_diameter>0.1</propeller_diameter>
-            <thrust_coefficient>1.0</thrust_coefficient>
-        </plugin>
-
-      <plugin
-        filename="ignition-gazebo-apply-joint-force-system"
-        name="ignition::gazebo::systems::ApplyJointForce">
-        <joint_name>base_link_z_joint</joint_name>
-        <topic>thrust_z/cmd</topic>
-      </plugin>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        <sensor name="imu_sensor" type="imu">
+          <always_on>1</always_on>
+          <update_rate>30</update_rate>
+          <visualize>true</visualize>
+        </sensor>
+            
+	            
+      </link>
         <!-- Joint 1 -->
         <joint name="joint_1" type="revolute">
-            <pose relative_to="link_1">0 0 -0.1 0 0 0</pose>                
-            <parent>base_link</parent>
+            <pose relative_to="link_yaw">0 0 0.15 0 0 0</pose>        
+            <parent>link_yaw</parent>
             <child>link_1</child>
             <axis>
                 <xyz>0 0 1</xyz>
                 <limit>
-                    <lower>-1.57</lower>
-                    <upper>1.57</upper>
 	            <effort>1000</effort>
                 </limit>
         <dynamics>
@@ -188,107 +228,6 @@
         </dynamics>                
             </axis>
         </joint>
-
-
-        <!-- Link 1 -->
-        <link name="link_1">
-            <pose>0 0 0.1 0 0 0</pose>
-            <inertial>
-                <mass>0.5</mass>
-                <inertia>
-		    <ixx>0.048</ixx>
-		    <iyy>0.048</iyy>
-		    <izz>0.0025</izz>
-                </inertia>
-            </inertial>
-            <visual name="visual_link_1">
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.2</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <ambient>0.0 0.0 1.0 1.0</ambient>
-                    <diffuse>0.0 0.0 1.0 1.0</diffuse>
-                </material>
-            </visual>
-            <collision name="collision_link_1">
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.2</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-            <!-- Joint 2 Visual (Sphere) -->
-            <visual name="visual_joint_2">
-            <pose relative_to="link_2">0 0 -0.2 0 0 0</pose>        
-                <geometry>
-                    <sphere>
-                        <radius>0.04</radius>
-                    </sphere>
-                </geometry>
-                <material>
-                    <ambient>1.0 1.0 0.0 1.0</ambient>
-                    <diffuse>1.0 1.0 0.0 1.0</diffuse>
-                </material>
-            </visual>
-        </link>
-
-        <!-- Link 2 -->
-        <link name="link_2">
-            <pose relative_to="link_1">0 0 0.3 0 0 0</pose>
-            <inertial>
-                <mass>1.0</mass>
-                <inertia>
-		    <ixx>0.084</ixx>
-		    <iyy>0.084</iyy>
-		    <izz>0.005</izz>
-                </inertia>
-            </inertial>
-            <visual name="visual_link_2">
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.4</length>
-                    </cylinder>
-                </geometry>
-                <material>
-                    <ambient>1.0 0.0 0.0 1.0</ambient>
-                    <diffuse>1.0 0.0 0.0 1.0</diffuse>
-                </material>
-            </visual>
-            <collision name="collision_link_2">
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.4</length>
-                    </cylinder>
-                </geometry>
-            </collision>
-        </link>
-
-        <!-- Joint 2 -->
-        <joint name="joint_2" type="revolute">
-        <pose relative_to="link_2">0 0 -0.2 0 0 0</pose>        
-            <parent>link_1</parent>
-            <child>link_2</child>
-            <axis>
-                <xyz>1 0 0</xyz>
-                <limit>
-                    <lower>-1.57</lower>
-                    <upper>1.57</upper>
-	            <effort>1000</effort>
-                </limit>
-        <dynamics>
-            <damping>11</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              
-            </axis>
-        </joint>
-
-
         <plugin
             filename="ignition-gazebo-joint-position-controller-system"
             name="ignition::gazebo::systems::JointPositionController">
@@ -300,9 +239,77 @@
 	    <i_max>1</i_max>
 	    <i_min>-1</i_min>
 	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>            
-        </plugin> 
-        
+  	    <cmd_min>-1000</cmd_min>
+        </plugin>      
+
+
+
+    <!-- For manipulator -->      
+    <!-- For manipulator -->      
+    <!-- For manipulator -->      
+    
+        <link name="link_1">
+          <pose relative_to="link_yaw">0 0 0.20 0 0 0</pose>	
+            <inertial>
+                <mass>0.5</mass>
+                <inertia>
+		    <ixx>0.048</ixx>
+		    <iyy>0.048</iyy>
+		    <izz>0.0025</izz>
+                </inertia>
+            </inertial>
+            <visual name="visual_link_1">
+              <pose relative_to="link_yaw">0 0 0.20 0 0 0</pose>	            
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.1</length>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <ambient>0.0 1.0 1.0 1.0</ambient>
+                    <diffuse>0.0 1.0 1.0 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision_link_1">
+              <pose relative_to="link_yaw">0 0 0.20 0 0 0</pose>	                        
+                <geometry>
+                    <cylinder>
+                        <radius>0.03</radius>
+                        <length>0.1</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <!-- Joint 2 Visual (Sphere) -->
+            <visual name="visual_joint_2">
+            <pose relative_to="link_1">0 0 0.05 0 0 0</pose>        
+                <geometry>
+                    <sphere>
+                        <radius>0.04</radius>
+                    </sphere>
+                </geometry>
+                <material>
+                    <ambient>1.0 1.0 0.0 1.0</ambient>
+                    <diffuse>1.0 1.0 0.0 1.0</diffuse>
+                </material>
+            </visual>
+        </link>
+        <!-- Joint 2 -->
+        <joint name="joint_2" type="revolute">
+            <pose relative_to="link_1">0 0 0.05 0 0 0</pose>        
+            <parent>link_1</parent>
+            <child>link_2</child>
+            <axis>
+                <xyz>1 0 0</xyz>
+                <limit>
+	            <effort>1000</effort>
+                </limit>
+        <dynamics>
+            <damping>11</damping>
+            <friction>0.0</friction> 
+        </dynamics>                              
+            </axis>
+        </joint>
         <plugin
             filename="ignition-gazebo-joint-position-controller-system"
             name="ignition::gazebo::systems::JointPositionController">
@@ -314,10 +321,144 @@
 	    <i_max>1</i_max>
 	    <i_min>-1</i_min>
 	    <cmd_max>1000</cmd_max>
-  	    <cmd_min>-1000</cmd_min>            
-        </plugin> 
+  	    <cmd_min>-1000</cmd_min>
+        </plugin>    
+    
+    
+    
+        <link name="link_2">
+            <pose relative_to="link_1">0 0.1 0.05 -1.57 0 0</pose>
+            <inertial>
+                <mass>2.0</mass>
+                <inertia>
+		    <ixx>0.084</ixx>
+		    <iyy>0.084</iyy>
+		    <izz>0.005</izz>
+                </inertia>
+            </inertial>
+            <visual name="visual_link_2">
+            <pose relative_to="link_2">0 0 0 0 0 0</pose>            
+                <geometry>
+                    <cylinder>
+                        <radius>0.02</radius>
+                        <length>0.2</length>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <ambient>1.0 0.0 0.0 1.0</ambient>
+                    <diffuse>1.0 0.0 0.0 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision_link_2">
+            <pose relative_to="link_2">0 0 0 0 0 0</pose>                        
+                <geometry>
+                    <cylinder>
+                        <radius>0.02</radius>
+                        <length>0.2</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <!-- Joint 3 Visual (Sphere) -->
+            <visual name="visual_joint_3">
+            <pose relative_to="link_2">0 0 0.1 0 0 0</pose>        
+                <geometry>
+                    <sphere>
+                        <radius>0.03</radius>
+                    </sphere>
+                </geometry>
+                <material>
+                    <ambient>1.0 1.0 0.0 1.0</ambient>
+                    <diffuse>1.0 1.0 0.0 1.0</diffuse>
+                </material>
+            </visual>            
+        </link>
+        <!-- Joint 3 -->
+        <joint name="joint_3" type="revolute">
+            <pose relative_to="link_2">0 0 0.1 0 0 0</pose>        
+            <parent>link_2</parent>
+            <child>link_3</child>
+            <axis>
+                <xyz>1 0 0</xyz>
+                <limit>
+	            <effort>1000</effort>
+                </limit>
+        <dynamics>
+            <damping>11</damping>
+            <friction>0.0</friction> 
+        </dynamics>                              
+            </axis>
+        </joint>    
+        <plugin
+            filename="ignition-gazebo-joint-position-controller-system"
+            name="ignition::gazebo::systems::JointPositionController">
+            <joint_name>joint_3</joint_name>
+	    <topic>joint_3/cmd</topic>
+	    <p_gain>1000</p_gain>
+	    <i_gain>0.1</i_gain>
+	    <d_gain>0.01</d_gain>
+	    <i_max>1</i_max>
+	    <i_min>-1</i_min>
+	    <cmd_max>1000</cmd_max>
+  	    <cmd_min>-1000</cmd_min>
+        </plugin>        
         
+        
+        
+        
+    
+        <link name="link_3">
+            <pose relative_to="link_2">0 0 0.2 0 0 0</pose>
+            <inertial>
+                <mass>2.0</mass>
+                <inertia>
+		    <ixx>0.084</ixx>
+		    <iyy>0.084</iyy>
+		    <izz>0.005</izz>
+                </inertia>
+            </inertial>
+            <visual name="visual_link_3">
+            <pose relative_to="link_3">0 0 0 0 0 0</pose>            
+                <geometry>
+                    <cylinder>
+                        <radius>0.02</radius>
+                        <length>0.2</length>
+                    </cylinder>
+                </geometry>
+                <material>
+                    <ambient>1.0 0.0 0.0 1.0</ambient>
+                    <diffuse>1.0 0.0 0.0 1.0</diffuse>
+                </material>
+            </visual>
+            <collision name="collision_link_3">
+            <pose relative_to="link_3">0 0 0 0 0 0</pose>                        
+                <geometry>
+                    <cylinder>
+                        <radius>0.02</radius>
+                        <length>0.2</length>
+                    </cylinder>
+                </geometry>
+            </collision>
+            <!-- End Effector Visual (Sphere) -->
+            <visual name="visual_end_effector">
+            <pose relative_to="link_3">0 0 0.1 0 0 0</pose>        
+                <geometry>
+                    <box>
+                        <size>0.06 0.06 0.02</size>
+                    </box>
+                </geometry>
+                <material>
+                    <ambient>1.0 1.0 1.0 1.0</ambient>
+                    <diffuse>1.0 1.0 1.0 1.0</diffuse>
+                </material>
+            </visual>            
+        </link>    
 
+
+    
+    
+
+      
+      
     </model>
-</sdf>
 
+</sdf>

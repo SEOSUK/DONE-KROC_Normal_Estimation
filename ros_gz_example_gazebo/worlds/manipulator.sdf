@@ -10,6 +10,8 @@
 <sdf version="1.8">
   <world name="manipulator_world">
     <!-- 물리, 센서, 장면 플러그인 추가 -->
+      <gravity>0 0 -9.810</gravity> <!-- 중력을 명시적으로 다시 설정 -->
+    
     <plugin
       filename="ignition-gazebo-physics-system"
       name="ignition::gazebo::systems::Physics">
@@ -35,6 +37,10 @@
     <plugin
       filename="FullSystem"
       name="ros_gz_example_gazebo::FullSystem">
+    </plugin>
+  <plugin
+      filename="gz-sim-imu-system"
+      name="gz::sim::systems::Imu">
     </plugin>
 
     <plugin
@@ -66,7 +72,7 @@
     <!-- 지면 정의 -->
     <model name="ground_plane">
       <static>true</static>
-      <link name="link_1">
+      <link name="ground_plane_link">
         <collision name="collision">
           <geometry>
             <plane>
