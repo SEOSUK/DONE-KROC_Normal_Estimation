@@ -48,9 +48,15 @@ class ign_pubsub : public rclcpp::Node
 	    void timer_callback()
 	    {	//main loop, 100Hz
 		set_command();
-		data_publish();     
 		PID_controller();		
-	    }
+		data_publish();     	    
+    }
+
+  double saturation(double max, double min, double value){
+  if (value > max) value = max;
+  else if (value < min) value = min;
+  return value;
+  }
 
 	void PID_controller()
 	{
@@ -58,124 +64,56 @@ class ign_pubsub : public rclcpp::Node
   y_error_integral += (y_axis_cmd - y_axis_meas);
   z_error_integral += (z_axis_cmd - z_axis_meas);
 
-  x_axis_force_cmd  = 10* (x_axis_cmd - x_axis_meas) + 0. * x_error_integral;
-  y_axis_force_cmd  = 10* (y_axis_cmd - y_axis_meas) + 0. * y_error_integral;
+  // x_axis_force_cmd  = 10* (x_axis_cmd - x_axis_meas) + 0. * x_error_integral;
+  // y_axis_force_cmd  = 10* (y_axis_cmd - y_axis_meas) + 0. * y_error_integral;
   z_axis_force_cmd  = 40 * (z_axis_cmd - z_axis_meas) + 0. * z_error_integral;
 	//error
-	roll_tau_cmd = 100 * (roll_axis_cmd - roll_meas) - 10 * roll_vel_meas;
+	roll_tau_cmd = 100 * (roll_axis_cmd - roll_meas) -10 * roll_vel_meas;
 	pitch_tau_cmd = 100 * (pitch_axis_cmd - pitch_meas) - 10 * pitch_vel_meas;
 	yaw_tau_cmd = 100 * (yaw_axis_cmd - yaw_meas) - 10 * yaw_vel_meas;
 
-  RCLCPP_INFO(this->get_logger(), "%lf z_axis_meas: '%lf' z_axis_force_cmd: '%lf'", z_axis_cmd, z_axis_meas, z_axis_force_cmd);
+ RCLCPP_INFO(this->get_logger(), "Fx: '%lf' Fy: '%lf' Fz: '%lf'", x_axis_force_cmd, y_axis_force_cmd, z_axis_force_cmd);
+ RCLCPP_INFO(this->get_logger(), "Fr: '%lf' Fp: '%lf' Fyaw: '%lf'", roll_tau_cmd, pitch_tau_cmd, yaw_tau_cmd);
+
 
 	}
 
 
 
-#include <cmath> // 수학 라이브러리
-
 void set_command()
 {
-    // 설정
-    double amplitude_joint_sine = 10.0 * M_PI / 180.0; // 진폭 10도 -> 라디안 변환
-    double period_joint1 = 2.0;                        // Joint 1 주기 (초)
-    double period_joint2 = 1.7;                        // Joint 2 주기 (초)
-    double period_joint3 = 1.3;                        // Joint 3 주기 (초)
-
+    // 시간 증가 (100Hz 기준, 매 호출마다 0.01초 증가)
     time_cnt++;
-    double time = time_cnt / 100.0; // 100Hz 기준 시간 계산
+    double time = time_cnt / 100.0;
 
 
-    // **구간별 동작**
-    if (time < 5.0)
+
+    // Phase 1: Move in the z-direction (5초 ~ 10초, 선형적으로 5m 상승)
+    if (time >= 5.0 && time < 10.0)
     {
-        // 0~5초: 대기 상태
-        return;
+        double t_normalized = (time - 5.0) / (10.0 - 5.0); // Normalized time (0 to 1)
+        z_axis_cmd = t_normalized * 5.0;                   // Linear profile (0 to 5m)
     }
-    else if (time < 10.0)
+
+    // Phase 2: Rotate in roll direction (10초 ~ 15초, 선형적으로 10도 회전)
+    else if (time >= 10.0 && time < 15.0)
     {
-        // 5~10초: z = 5로 이동
-        z_axis_cmd = 5.0 * ((time - 5.0) / 5.0); // 선형 증가
+        z_axis_cmd = 5.0;                                 // 유지된 z 위치
+        double t_normalized = (time - 10.0) / (15.0 - 10.0); // Normalized time (0 to 1)
+        yaw_axis_cmd = t_normalized * - 60.0 * (M_PI / 180.0); // Linear profile (0 to 10 deg in radians)
     }
-    else if (time < 15.0)
+
+    // Phase 3: Rotate in yaw direction (15초 ~ 20초, 선형적으로 45도 회전)
+    else if (time >= 15.0 && time < 20.0)
     {
-        // 10~15초: x = 5로 이동
-        z_axis_cmd = 5.0;                          // z 유지
-        x_axis_cmd = 5.0 * ((time - 10.0) / 5.0); // 선형 증가
+        z_axis_cmd = 5.0;                                 // 유지된 z 위치
+        yaw_axis_cmd = - 60.0 * (M_PI / 180.0);            // 유지된 roll 위치
+        double t_normalized = (time - 15.0) / (20.0 - 15.0); // Normalized time (0 to 1)
+        roll_axis_cmd = t_normalized * 45.0 * (M_PI / 180.0); // Linear profile (0 to 45 deg in radians)
     }
-    else if (time < 20.0)
-    {
-        // 15~20초: y = 5로 이동
-        z_axis_cmd = 5.0;                          // z 유지
-        x_axis_cmd = 5.0;                          // x 유지
-        y_axis_cmd = 5.0 * ((time - 15.0) / 5.0); // 선형 증가
-    }
-    else if (time < 25.0)
-    {
-        // 20~25초: yaw = 45도 (pi/4)로 이동
-        z_axis_cmd = 5.0;                          // z 유지
-        x_axis_cmd = 5.0;                          // x 유지
-        y_axis_cmd = 5.0;                          // y 유지
-        yaw_axis_cmd = (M_PI / 4.0) * ((time - 20.0) / 5.0); // 선형 증가
-    }
-    else if (time < 30.0)
-    {
-        // 25~30초: x = 0, y = 0로 이동
-        z_axis_cmd = 5.0;                          // z 유지
-        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
-        x_axis_cmd = 5.0 * (1.0 - ((time - 25.0) / 5.0)); // 선형 감소
-        y_axis_cmd = 5.0 * (1.0 - ((time - 25.0) / 5.0)); // 선형 감소
-    }
-    else if (time < 35.0)
-    {
-        z_axis_cmd = 5.0;                          // z 유지
-        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
-        // 30~35초: joint_1 = 170도로 이동 (사인파 기반 궤적)
-        double t_normalized = (time - 30.0) / 5.0; // 현재 구간에서 0~1로 정규화
-        joint_1_cmd = (170.0 * M_PI / 180.0) * 0.5 * (1 - cos(M_PI * t_normalized)); // 사인파 궤적
-    }
-    else if (time < 40.0)
-    {
-        z_axis_cmd = 5.0;                          // z 유지
-        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
-        // 35~40초: joint_1 = 1도로 이동 (사인파 기반 궤적)
-        double t_normalized = (time - 35.0) / 5.0; // 현재 구간에서 0~1로 정규화
-        double joint_1_start = 170.0 * M_PI / 180.0;
-        double joint_1_end = 1.0 * M_PI / 180.0;
-        joint_1_cmd = joint_1_start + 0.5 * (joint_1_end - joint_1_start) * (1 - cos(M_PI * t_normalized)); // 사인파 궤적
-    }
-    else if (time < 45.0)
-    {
-        z_axis_cmd = 5.0;                          // z 유지
-        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
-        // 40~45초: joint_1 = 170도로 재이동 (사인파 기반 궤적)
-        double t_normalized = (time - 40.0) / 5.0; // 현재 구간에서 0~1로 정규화
-        double joint_1_start = 1.0 * M_PI / 180.0;
-        double joint_1_end = 170.0 * M_PI / 180.0;
-        joint_1_cmd = joint_1_start + 0.5 * (joint_1_end - joint_1_start) * (1 - cos(M_PI * t_normalized)); // 사인파 궤적
-    }
-    else if (time < 60.0)
-    {
-        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
-        z_axis_cmd = 5.0;                          // z 유지
-        // 45~60초: joint_1, joint_2, joint_3 Sine Wave
-        joint_1_cmd = amplitude_joint_sine * sin((2.0 * M_PI / period_joint1) * (time - 45.0)) + M_PI * 170 / 180;
-        joint_2_cmd = - amplitude_joint_sine * cos((2.0 * M_PI / period_joint2) * (time - 45.0)) + amplitude_joint_sine;
-        joint_3_cmd = - amplitude_joint_sine * cos((2.0 * M_PI / period_joint3) * (time - 45.0)) + amplitude_joint_sine;
-    }
-    else if (time < 65.0)
-    {
-        yaw_axis_cmd = M_PI / 4.0;                 // yaw 유지
-        // 60~70초: z = 0으로 선형 감소
-        z_axis_cmd = 5.0 * (1.0 - ((time - 55.0) / 10.0)); // 선형 감소
-    }
+
+x_axis_force_cmd = 5;
 }
-
-
-
-
-
-
 
 
 
@@ -215,7 +153,7 @@ void set_command()
  
      void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
     {
-    RCLCPP_INFO(this->get_logger(), "Received IMU data:");
+    // RCLCPP_INFO(this->get_logger(), "Received IMU data:");
 
     // 쿼터니언 값 가져오기
     double qx = msg->orientation.x;
@@ -247,7 +185,7 @@ void set_command()
 	    
     void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
     {
-        RCLCPP_INFO(this->get_logger(), "Received PoseArray message with %ld poses", msg->poses.size());
+        // RCLCPP_INFO(this->get_logger(), "Received PoseArray message with %ld poses", msg->poses.size());
 
         // link_yaw의 id는 7로 고정
         const int link_yaw_id = 7;
