@@ -72,8 +72,8 @@ class ign_pubsub : public rclcpp::Node
 	pitch_tau_cmd = 100 * (pitch_axis_cmd - pitch_meas) - 10 * pitch_vel_meas;
 	yaw_tau_cmd = 100 * (yaw_axis_cmd - yaw_meas) - 10 * yaw_vel_meas;
 
- RCLCPP_INFO(this->get_logger(), "Fx: '%lf' Fy: '%lf' Fz: '%lf'", x_axis_force_cmd, y_axis_force_cmd, z_axis_force_cmd);
- RCLCPP_INFO(this->get_logger(), "Fr: '%lf' Fp: '%lf' Fyaw: '%lf'", roll_tau_cmd, pitch_tau_cmd, yaw_tau_cmd);
+// RCLCPP_INFO(this->get_logger(), "Fx: '%lf' Fy: '%lf' Fz: '%lf'", x_axis_force_cmd, y_axis_force_cmd, z_axis_force_cmd);
+// RCLCPP_INFO(this->get_logger(), "Fr: '%lf' Fp: '%lf' Fyaw: '%lf'", roll_tau_cmd, pitch_tau_cmd, yaw_tau_cmd);
 
 
 	}

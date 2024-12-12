@@ -6,159 +6,8 @@
     <!-- For drone -->      
     <!-- For drone -->      
     <!-- For drone -->        
-	<joint name="fixed_joint" type="fixed">
-	  <parent>world</parent> <!-- 월드와 연결 -->
-	  <child>base_link</child>    <!-- 고정할 링크 -->
-	</joint>      
-      <link name="base_link">
-        <pose>0.0 0.0 0.0 0 0 0</pose>
-        <inertial>
-          <inertia>
-            <ixx>2.501</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>2.501</iyy>
-            <iyz>0</iyz>
-            <izz>5</izz>
-          </inertia>
-          <mass>120.0</mass>
-        </inertial>
-        <visual name="base_visual">
-          <pose>0.0 0.0 0.0 0 0 0</pose>
-          <geometry>
-            <box>
-              <size>5 5 0.01</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>1.0 0.0 0.0 1</ambient>
-            <diffuse>1.0 0.0 0.0 1</diffuse>
-            <specular>1.0 0.0 0.0 1</specular>
-          </material>
-        </visual>
-        <collision name="base_collision">
-          <pose>0.0 0.0 0.0 0 0 0</pose>
-          <geometry>
-            <box>
-              <size>0.5 0.5 0.01</size>
-            </box>
-          </geometry>
-        </collision>
-      </link>
       
-      <link name="link_x"/>
-      <link name="link_y"/>
-      <link name="link_z"/>
-      <link name="link_r"/>
-      <link name="link_p"/>      
-      <joint name="joint_x" type="prismatic">
-          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
-        <parent>base_link</parent>
-        <child>link_x</child>
-        <axis>
-          <xyz>1 0 0</xyz>
-          <dynamics>
-            <damping>10</damping>
-          </dynamics>
-        </axis>
-      </joint>
-      <plugin
-        filename="gz-sim-apply-joint-force-system"
-        name="gz::sim::systems::ApplyJointForce">
-        <joint_name>joint_x</joint_name>
-      </plugin>
-      
-      <joint name="joint_y" type="prismatic">
-          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
-        <pose>0 0 -0.5 0 0 0</pose>
-        <parent>link_x</parent>
-        <child>link_y</child>
-        <axis>
-          <xyz>0 1 0</xyz>
-          <dynamics>
-            <damping>10</damping>
-          </dynamics>
-        </axis>
-      </joint>
-      <plugin
-        filename="gz-sim-apply-joint-force-system"
-        name="gz::sim::systems::ApplyJointForce">
-        <joint_name>joint_y</joint_name>
-      </plugin>
-      
-      <joint name="joint_z" type="prismatic">
-          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
-        <pose>0 0 -0.5 0 0 0</pose>
-        <parent>link_y</parent>
-        <child>link_z</child>
-        <axis>
-          <xyz>0 0 1</xyz>
-          <dynamics>
-            <damping>10</damping>
-          </dynamics>
-        </axis>
-      </joint>
-      <plugin
-        filename="gz-sim-apply-joint-force-system"
-        name="gz::sim::systems::ApplyJointForce">
-        <joint_name>joint_z</joint_name>
-      </plugin>            
-
-      <joint name="joint_r" type="revolute">
-          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
-        <pose>0 0 -0.5 0 0 0</pose>
-        <parent>link_z</parent>
-        <child>link_r</child>
-        <axis>
-          <xyz>1 0 0</xyz>
-          <dynamics>
-            <damping>5</damping>
-          </dynamics>
-        </axis>
-      </joint>
-      <plugin
-        filename="gz-sim-apply-joint-force-system"
-        name="gz::sim::systems::ApplyJointForce">
-        <joint_name>joint_r</joint_name>
-      </plugin>
-      
-      <joint name="joint_p" type="revolute">
-          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>	
-        <pose>0 0 -0.5 0 0 0</pose>
-        <parent>link_r</parent>
-        <child>link_p</child>
-        <axis>
-          <xyz>0 1 0</xyz>
-          <dynamics>
-            <damping>5</damping>
-          </dynamics>
-        </axis>
-      </joint>
-      <plugin
-        filename="gz-sim-apply-joint-force-system"
-        name="gz::sim::systems::ApplyJointForce">
-        <joint_name>joint_p</joint_name>
-      </plugin>
-      
-      <joint name="joint_yaw" type="revolute">
-          <pose relative_to="link_yaw">0 0 0 0 0 0</pose>
-        <parent>link_p</parent>
-        <child>link_yaw</child>
-        <axis>
-          <xyz>0 0 1</xyz>
-          <dynamics>
-            <damping>5</damping>
-          </dynamics>
-        </axis>
-      </joint>
-      <plugin
-        filename="gz-sim-apply-joint-force-system"
-        name="gz::sim::systems::ApplyJointForce">
-        <joint_name>joint_yaw</joint_name>
-	<topic>joint_yaw/cmd</topic>        
-      </plugin>                  
-      
-      <link name="link_yaw">
+      <link name="link_drone">
         <pose>0.0 0.0 0.15 0.0 0 0</pose>
         <inertial>
           <inertia>
@@ -172,7 +21,7 @@
           <mass>0.6</mass>
         </inertial>
         <visual name="visual">
-            <pose relative_to="link_yaw">0 0 0 0 0 0</pose>                                    
+            <pose relative_to="link_drone">0 0 0 0 0 0</pose>                                    
           <geometry>
             <box>
               <size>0.7 0.7 0.3</size>
@@ -193,7 +42,7 @@
         </collision>
             <!-- Joint 1 Visual (Sphere) -->
             <visual name="visual_joint_1">
-            <pose relative_to="link_yaw">0 0 0.15 0 0 0</pose>                        
+            <pose relative_to="link_drone">0 0 0.15 0 0 0</pose>                        
                 <geometry>
                     <sphere>
                         <radius>0.05</radius>
@@ -214,8 +63,8 @@
       </link>
         <!-- Joint 1 -->
         <joint name="joint_1" type="revolute">
-            <pose relative_to="link_yaw">0 0 0.15 0 0 0</pose>        
-            <parent>link_yaw</parent>
+            <pose relative_to="link_drone">0 0 0.15 0 0 0</pose>        
+            <parent>link_drone</parent>
             <child>link_1</child>
             <axis>
                 <xyz>0 0 1</xyz>
@@ -249,7 +98,7 @@
     <!-- For manipulator -->      
     
         <link name="link_1">
-          <pose relative_to="link_yaw">0 0 0.20 0 0 0</pose>	
+          <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>	
             <inertial>
                 <mass>0.5</mass>
                 <inertia>
@@ -259,7 +108,7 @@
                 </inertia>
             </inertial>
             <visual name="visual_link_1">
-              <pose relative_to="link_yaw">0 0 0.20 0 0 0</pose>	            
+              <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>	            
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -272,7 +121,7 @@
                 </material>
             </visual>
             <collision name="collision_link_1">
-              <pose relative_to="link_yaw">0 0 0.20 0 0 0</pose>	                        
+              <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>	                        
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>

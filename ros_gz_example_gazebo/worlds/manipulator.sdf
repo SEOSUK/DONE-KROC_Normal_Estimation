@@ -10,7 +10,7 @@
 <sdf version="1.8">
   <world name="manipulator_world">
     <!-- 물리, 센서, 장면 플러그인 추가 -->
-      <gravity>0 0 -9.810</gravity> <!-- 중력을 명시적으로 다시 설정 -->
+      <gravity>0 0 0</gravity> <!-- 중력을 명시적으로 다시 설정 -->
     
     <plugin
       filename="ignition-gazebo-physics-system"
@@ -45,14 +45,14 @@
 
     <plugin
       filename="ignition-gazebo-apply-link-wrench-system"
-      name="ignition::gazebo::systems::ApplyLinkWrench">
+      name="gz::sim::systems::ApplyLinkWrench">
       <persistent>
-        <entity_name>base_link</entity_name>
+        <entity_name>link_drone</entity_name>
         <entity_type>link</entity_type>
-        <force> 0 0 5</force> <!-- X 방향으로 10N의 힘 -->
-        <torque>0 0 0</torque> <!-- Z 방향으로 5Nm의 토크 -->
+        <force>0 0 0</force>
+        <torque>0 0 0</torque>
       </persistent>
-    </plugin>
+    </plugin>              
 
     <!-- 조명 설정 -->
     <light name="sun" type="directional">
