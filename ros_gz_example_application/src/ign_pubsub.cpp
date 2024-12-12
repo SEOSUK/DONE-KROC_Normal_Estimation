@@ -112,7 +112,7 @@ void set_command()
         roll_axis_cmd = t_normalized * 45.0 * (M_PI / 180.0); // Linear profile (0 to 45 deg in radians)
     }
 
-x_axis_force_cmd = 5;
+x_axis_force_cmd = 4;
 }
 
 
