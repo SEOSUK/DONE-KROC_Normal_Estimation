@@ -24,13 +24,4 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME})
 
 
-add_executable(entity_wrench_publisher src/entity_wrench_publisher.cpp)
-ament_target_dependencies(entity_wrench_publisher rclcpp ros_gz_interfaces)
-
-install(TARGETS
-  entity_wrench_publisher
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-
 ament_package()

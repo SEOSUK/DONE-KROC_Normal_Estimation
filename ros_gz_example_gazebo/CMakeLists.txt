@@ -59,11 +59,24 @@ target_link_libraries(FullSystem PRIVATE
 
 
 
+#My ADD!!
+add_library(ForceTorquePlugin 
+   SHARED 
+   src/ForceTorquePlugin.cc)
+
+target_include_directories(
+  ForceTorquePlugin PRIVATE include
+)
+
+target_link_libraries(ForceTorquePlugin PRIVATE
+  ignition-gazebo${GZ_SIM_VER}::ignition-gazebo${GZ_SIM_VER})
+
+
 # Following 'install' directive ensures that the compiled libraries
 # of the 'BasicSystem' and 'FullSystem' targets will be copied
 # to the subfolder 'lib/ros_gz_example_gazebo' of the install directory.
 install(
-  TARGETS BasicSystem FullSystem
+  TARGETS BasicSystem FullSystem ForceTorquePlugin
   DESTINATION lib/${PROJECT_NAME}
 )
 
