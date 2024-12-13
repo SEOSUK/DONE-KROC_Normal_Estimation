@@ -14,11 +14,23 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(ros_gz_interfaces REQUIRED)
+
 
 add_executable(ign_pubsub src/ign_pubsub.cpp)
 ament_target_dependencies(ign_pubsub rclcpp std_msgs sensor_msgs)
 install(TARGETS
   ign_pubsub
   DESTINATION lib/${PROJECT_NAME})
+
+
+add_executable(entity_wrench_publisher src/entity_wrench_publisher.cpp)
+ament_target_dependencies(entity_wrench_publisher rclcpp ros_gz_interfaces)
+
+install(TARGETS
+  entity_wrench_publisher
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 ament_package()
