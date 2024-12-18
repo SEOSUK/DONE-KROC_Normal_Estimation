@@ -12,6 +12,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>ros_gz_example_description</depend>
+  <depend>ignition-gazebo6</depend>
 
   <test_depend>ament_lint_auto</test_depend>
 

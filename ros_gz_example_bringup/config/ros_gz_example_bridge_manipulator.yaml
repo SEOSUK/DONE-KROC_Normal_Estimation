@@ -14,11 +14,6 @@
   ros_type_name: "sensor_msgs/msg/Imu"
   gz_type_name: "gz.msgs.IMU"
   direction: GZ_TO_ROS  
-- ros_topic_name: "/manipulator/wrench"
-  gz_topic_name: "/world/manipulator_world/wrench"
-  ros_type_name: "ros_gz_interfaces/msg/EntityWrench"
-  gz_type_name: "gz.msgs.EntityWrench"
-  direction: ROS_TO_GZ
 - ros_topic_name: "/dynamic_pose/info"
   gz_topic_name: "/world/manipulator_world/dynamic_pose/info"
   ros_type_name: "geometry_msgs/msg/PoseArray"

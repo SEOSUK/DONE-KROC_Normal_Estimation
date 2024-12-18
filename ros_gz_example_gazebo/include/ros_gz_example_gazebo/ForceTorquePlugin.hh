@@ -1,47 +1,84 @@
-#ifndef ROS_GZ_EXAMPLE_GAZEBO_FORCE_TORQUE_PLUGIN_HH
-#define ROS_GZ_EXAMPLE_GAZEBO_FORCE_TORQUE_PLUGIN_HH
+#ifndef GZ_SIM_SYSTEMS_FORCETORQUEPLUGIN_HH_
+#define GZ_SIM_SYSTEMS_FORCETORQUEPLUGIN_HH_
 
 #include <gz/sim/System.hh>
-#include <gz/sim/Link.hh>
-#include <ignition/math/Vector3.hh>
+#include <memory>
 
-namespace ros_gz_example_gazebo
+namespace ignition
 {
-/// \brief Plugin to apply force and torque to a link.
-class ForceTorquePlugin : public gz::sim::System,
-                          public gz::sim::ISystemConfigure,
-                          public gz::sim::ISystemPreUpdate
+namespace gazebo
 {
-  public:
-    /// \brief Configure the plugin.
-    /// \param[in] _entity Entity to which the plugin is attached.
-    /// \param[in] _sdf SDF configuration.
-    /// \param[in] _ecm Entity component manager.
-    /// \param[in] _eventMgr Event manager.
-    void Configure(
-        const gz::sim::Entity &_entity,
-        const std::shared_ptr<const sdf::Element> &_sdf,
-        gz::sim::EntityComponentManager &_ecm,
-        gz::sim::EventManager &_eventMgr) override;
+inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE
+{
+namespace systems
+{
+  // Forward declaration
+  class ForceTorquePluginPrivate;
 
-    /// \brief Apply force and torque in the pre-update phase.
-    /// \param[in] _info Simulation update info.
-    /// \param[in] _ecm Entity component manager.
-    void PreUpdate(
-        const gz::sim::UpdateInfo &_info,
-        gz::sim::EntityComponentManager &_ecm) override;
+  /// \brief Exposes transport topics and SDF params for applying forces and
+  /// torques to links in simulation. It should be attached to a world.
+  ///
+  /// The target link is defined in each message. If a link entity is provided,
+  /// that will receive a wrench. If a model is provided, its canonical link
+  /// will receive it. No other entity types are supported.
+  ///
+  /// ## Topics
+  ///
+  /// * /world/<world_name>/wrench
+  ///     * Message type: msgs::EntityWrench
+  ///     * Effect: Applies the given wrench during a single time step.
+  ///
+  /// * /world/<world_name>/wrench/persistent
+  ///     * Message type: msgs::EntityWrench
+  ///     * Effect: Keeps applying the given wrench every time step. Persistent
+  ///               wrenches can be applied to entities that aren't in
+  ///               simulation yet, and will start taking effect once they do.
+  ///
+  /// * /world/<world_name>/wrench/clear
+  ///     * Message type: msgs::Entity
+  ///     * Effect: Clears any persistent wrenches that are being applied to
+  ///               the given entity.
+  ///
+  /// ## System Parameters
+  ///
+  /// Persistent wrenches can be defined from SDF, for example:
+  ///
+  /// ```
+  /// <persistent>
+  ///   <entity_name>box</entity_name>
+  ///   <entity_type>model</entity_type>
+  ///   <force>-10 0 0</force>
+  ///   <torque>0 0 0.1</torque>
+  /// </persistent>
+  /// ```
+  class ForceTorquePlugin
+      : public System,
+        public ISystemConfigure,
+        public ISystemPreUpdate
+  {
+    /// \brief Constructor
+    public: ForceTorquePlugin();
 
-  private:
-    /// \brief The link to which the force and torque are applied.
-    gz::sim::Link link;
+    /// \brief Destructor
+    public: ~ForceTorquePlugin() override = default;
 
-    /// \brief Force to apply in the body frame.
-    ignition::math::Vector3d bodyForce{0, 0, 0};
+    // Documentation inherited
+    public: void Configure(const Entity &_entity,
+                           const std::shared_ptr<const sdf::Element> &_sdf,
+                           EntityComponentManager &_ecm,
+                           EventManager &_eventMgr) override;
 
-    /// \brief Torque to apply in the body frame.
-    ignition::math::Vector3d bodyTorque{0, 0, 0};
-};
-} // namespace ros_gz_example_gazebo
+    // Documentation inherited
+    public: void PreUpdate(const UpdateInfo &_info,
+                           EntityComponentManager &_ecm) override;
+
+    /// \brief Private data pointer
+    private: std::unique_ptr<ForceTorquePluginPrivate> dataPtr;
+  };
+}
+}
+}
+}
 
 #endif
 

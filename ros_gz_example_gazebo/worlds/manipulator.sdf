@@ -10,7 +10,7 @@
 <sdf version="1.8">
   <world name="manipulator_world">
     <!-- 물리, 센서, 장면 플러그인 추가 -->
-      <gravity>0 0 0</gravity> <!-- 중력을 명시적으로 다시 설정 -->
+      <gravity>0 0-9.810</gravity> <!-- 중력을 명시적으로 다시 설정 -->
     
     <plugin
       filename="ignition-gazebo-physics-system"
@@ -57,6 +57,18 @@
       </attenuation>
       <direction>-0.5 0.1 -0.9</direction>
     </light>
+
+
+	<plugin
+	  filename="libForceTorquePlugin.so"
+	  name="force_torque_plugin::ForceTorquePlugin">
+	  <persistent>
+	    <entity_name>link_drone</entity_name>
+	    <entity_type>link</entity_type>
+	    <force>0 0 0</force>
+	    <torque>0 0 0</torque>
+	  </persistent>
+	</plugin>
 
     <!-- 지면 정의 -->
     <model name="ground_plane">
