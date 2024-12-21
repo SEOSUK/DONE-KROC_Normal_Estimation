@@ -60,8 +60,8 @@
 
 
 	<plugin
-	  filename="libForceTorquePlugin.so"
-	  name="force_torque_plugin::ForceTorquePlugin">
+	  filename="ignition-gazebo-apply-link-wrench-system"
+	  name="gz::sim::systems::ApplyLinkWrench">
 	  <persistent>
 	    <entity_name>link_drone</entity_name>
 	    <entity_type>link</entity_type>
@@ -69,6 +69,8 @@
 	    <torque>0 0 0</torque>
 	  </persistent>
 	</plugin>
+
+
 
     <!-- 지면 정의 -->
     <model name="ground_plane">

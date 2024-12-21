@@ -3,10 +3,10 @@
     <model name="manipulator">
       <pose>0 0 0.005 0 0 0</pose>
 
-    <!-- For drone -->      
-    <!-- For drone -->      
-    <!-- For drone -->        
-      
+    <!-- For drone -->
+    <!-- For drone -->
+    <!-- For drone -->
+
       <link name="link_drone">
         <pose>0.0 0.0 0.15 0.0 0 0</pose>
         <inertial>
@@ -21,7 +21,7 @@
           <mass>0.6</mass>
         </inertial>
         <visual name="visual">
-            <pose relative_to="link_drone">0 0 0 0 0 0</pose>                                    
+            <pose relative_to="link_drone">0 0 0 0 0 0</pose>
           <geometry>
             <box>
               <size>0.7 0.7 0.3</size>
@@ -42,7 +42,7 @@
         </collision>
             <!-- Joint 1 Visual (Sphere) -->
             <visual name="visual_joint_1">
-            <pose relative_to="link_drone">0 0 0.15 0 0 0</pose>                        
+            <pose relative_to="link_drone">0 0 0.15 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.05</radius>
@@ -57,14 +57,14 @@
           <always_on>1</always_on>
           <update_rate>30</update_rate>
           <visualize>true</visualize>
-        </sensor>	            
+        </sensor>
       </link>
-              
-      
-      
+
+
+
         <!-- Joint 1 -->
         <joint name="joint_1" type="revolute">
-            <pose relative_to="link_drone">0 0 0.15 0 0 0</pose>        
+            <pose relative_to="link_drone">0 0 0.15 0 0 0</pose>
             <parent>link_drone</parent>
             <child>link_1</child>
             <axis>
@@ -74,8 +74,8 @@
                 </limit>
         <dynamics>
             <damping>1</damping>
-            <friction>0.0</friction> 
-        </dynamics>                
+            <friction>0.0</friction>
+        </dynamics>
             </axis>
         </joint>
         <plugin
@@ -90,16 +90,16 @@
 	    <i_min>-1</i_min>
 	    <cmd_max>1000</cmd_max>
   	    <cmd_min>-1000</cmd_min>
-        </plugin>      
+        </plugin>
 
 
 
-    <!-- For manipulator -->      
-    <!-- For manipulator -->      
-    <!-- For manipulator -->      
-    
+    <!-- For manipulator -->
+    <!-- For manipulator -->
+    <!-- For manipulator -->
+
         <link name="link_1">
-          <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>	
+          <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>
             <inertial>
                 <mass>0.5</mass>
                 <inertia>
@@ -109,7 +109,7 @@
                 </inertia>
             </inertial>
             <visual name="visual_link_1">
-              <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>	            
+              <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -122,7 +122,7 @@
                 </material>
             </visual>
             <collision name="collision_link_1">
-              <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>	                        
+              <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -132,7 +132,7 @@
             </collision>
             <!-- Joint 2 Visual (Sphere) -->
             <visual name="visual_joint_2">
-            <pose relative_to="link_1">0 0 0.05 0 0 0</pose>        
+            <pose relative_to="link_1">0 0 0.05 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.04</radius>
@@ -146,7 +146,7 @@
         </link>
         <!-- Joint 2 -->
         <joint name="joint_2" type="revolute">
-            <pose relative_to="link_1">0 0 0.05 0 0 0</pose>        
+            <pose relative_to="link_1">0 0 0.05 0 0 0</pose>
             <parent>link_1</parent>
             <child>link_2</child>
             <axis>
@@ -156,8 +156,8 @@
                 </limit>
         <dynamics>
             <damping>11</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              
+            <friction>0.0</friction>
+        </dynamics>
             </axis>
         </joint>
         <plugin
@@ -172,10 +172,10 @@
 	    <i_min>-1</i_min>
 	    <cmd_max>1000</cmd_max>
   	    <cmd_min>-1000</cmd_min>
-        </plugin>    
-    
-    
-    
+        </plugin>
+
+
+
         <link name="link_2">
             <pose relative_to="link_1">0 0.1 0.05 -1.57 0 0</pose>
             <inertial>
@@ -187,7 +187,7 @@
                 </inertia>
             </inertial>
             <visual name="visual_link_2">
-            <pose relative_to="link_2">0 0 0 0 0 0</pose>            
+            <pose relative_to="link_2">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.02</radius>
@@ -200,7 +200,7 @@
                 </material>
             </visual>
             <collision name="collision_link_2">
-            <pose relative_to="link_2">0 0 0 0 0 0</pose>                        
+            <pose relative_to="link_2">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.02</radius>
@@ -210,7 +210,7 @@
             </collision>
             <!-- Joint 3 Visual (Sphere) -->
             <visual name="visual_joint_3">
-            <pose relative_to="link_2">0 0 0.1 0 0 0</pose>        
+            <pose relative_to="link_2">0 0 0.1 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.03</radius>
@@ -220,11 +220,11 @@
                     <ambient>1.0 1.0 0.0 1.0</ambient>
                     <diffuse>1.0 1.0 0.0 1.0</diffuse>
                 </material>
-            </visual>            
+            </visual>
         </link>
         <!-- Joint 3 -->
         <joint name="joint_3" type="revolute">
-            <pose relative_to="link_2">0 0 0.1 0 0 0</pose>        
+            <pose relative_to="link_2">0 0 0.1 0 0 0</pose>
             <parent>link_2</parent>
             <child>link_3</child>
             <axis>
@@ -234,10 +234,10 @@
                 </limit>
         <dynamics>
             <damping>11</damping>
-            <friction>0.0</friction> 
-        </dynamics>                              
+            <friction>0.0</friction>
+        </dynamics>
             </axis>
-        </joint>    
+        </joint>
         <plugin
             filename="ignition-gazebo-joint-position-controller-system"
             name="ignition::gazebo::systems::JointPositionController">
@@ -250,12 +250,12 @@
 	    <i_min>-1</i_min>
 	    <cmd_max>1000</cmd_max>
   	    <cmd_min>-1000</cmd_min>
-        </plugin>        
-        
-        
-        
-        
-    
+        </plugin>
+
+
+
+
+
         <link name="link_3">
             <pose relative_to="link_2">0 0 0.2 0 0 0</pose>
             <inertial>
@@ -267,7 +267,7 @@
                 </inertia>
             </inertial>
             <visual name="visual_link_3">
-            <pose relative_to="link_3">0 0 0 0 0 0</pose>            
+            <pose relative_to="link_3">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.02</radius>
@@ -280,7 +280,7 @@
                 </material>
             </visual>
             <collision name="collision_link_3">
-            <pose relative_to="link_3">0 0 0 0 0 0</pose>                        
+            <pose relative_to="link_3">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.02</radius>
@@ -290,7 +290,7 @@
             </collision>
             <!-- End Effector Visual (Sphere) -->
             <visual name="visual_end_effector">
-            <pose relative_to="link_3">0 0 0.1 0 0 0</pose>        
+            <pose relative_to="link_3">0 0 0.1 0 0 0</pose>
                 <geometry>
                     <box>
                         <size>0.06 0.06 0.02</size>
@@ -300,8 +300,8 @@
                     <ambient>1.0 1.0 1.0 1.0</ambient>
                     <diffuse>1.0 1.0 1.0 1.0</diffuse>
                 </material>
-            </visual>            
-        </link>    
+            </visual>
+        </link>
 
 
 
@@ -337,14 +337,9 @@
                     </cylinder>
                 </geometry>
             </collision>
-        </link>    
+        </link>
 
 
-    
-
-
-      
-      
     </model>
 
 </sdf>

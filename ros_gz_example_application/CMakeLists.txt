@@ -18,7 +18,7 @@ find_package(ros_gz_interfaces REQUIRED)
 
 
 add_executable(ign_pubsub src/ign_pubsub.cpp)
-ament_target_dependencies(ign_pubsub rclcpp std_msgs sensor_msgs)
+ament_target_dependencies(ign_pubsub rclcpp std_msgs sensor_msgs ros_gz_interfaces)
 install(TARGETS
   ign_pubsub
   DESTINATION lib/${PROJECT_NAME})

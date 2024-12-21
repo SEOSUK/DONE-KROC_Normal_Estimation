@@ -8,6 +8,7 @@
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "sensor_msgs/msg/imu.hpp"  // IMU 메시지 타입 헤더
+#include <ros_gz_interfaces/msg/entity_wrench.hpp>
 #include <cmath>
 
 using namespace std::chrono_literals;
@@ -30,6 +31,8 @@ class ign_pubsub : public rclcpp::Node
       roll_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_r/command", 10);            
       pitch_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_p/command", 10);                  
       yaw_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_yaw/command", 10);            
+      wrench_publisher_ = this->create_publisher<ros_gz_interfaces::msg::EntityWrench>("/link_drone/wrench", 10);
+      
         joint_state_subscriber_ = this->create_subscription<sensor_msgs::msg::JointState>(
             "/manipulator/joint_states", 10,
             std::bind(&ign_pubsub::joint_state_subsciber_callback, this, std::placeholders::_1));
@@ -42,6 +45,11 @@ class ign_pubsub : public rclcpp::Node
 		
       timer_ = this->create_wall_timer(
       10ms, std::bind(&ign_pubsub::timer_callback, this));
+
+        wrench_timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(500),
+            std::bind(&ign_pubsub::publish_wrench, this));
+
     }
 
   private:
@@ -116,6 +124,27 @@ x_axis_force_cmd = 5;
 }
 
 
+    void publish_wrench()
+    {
+        auto msg = ros_gz_interfaces::msg::EntityWrench();
+        // 엔티티 이름 및 유형 설정
+        msg.entity.name = "link_drone";
+        msg.entity.type = ros_gz_interfaces::msg::Entity::LINK;
+
+        // 힘과 토크 설정
+        msg.wrench.force.x = 0.0;
+        msg.wrench.force.y = 0.0;
+        msg.wrench.force.z = 500.0;  // 500 N 힘 적용
+        msg.wrench.torque.x = 0.0;
+        msg.wrench.torque.y = 0.0;
+        msg.wrench.torque.z = 0.0;
+
+        // 메시지 발행
+        RCLCPP_INFO(this->get_logger(), "Publishing wrench message");
+        wrench_publisher_->publish(msg);
+    }
+
+
 
 
 
@@ -171,8 +200,8 @@ x_axis_force_cmd = 5;
    yaw_vel_meas = msg->angular_velocity.z;
 
     // RPY 출력
-  //  RCLCPP_INFO(this->get_logger(), "Orientation (RPY) - Roll: %.6f, Pitch: %.6f, Yaw: %.6f",
-  //             roll_meas, pitch_meas, yaw_meas);
+    RCLCPP_INFO(this->get_logger(), "Orientation (RPY) - Roll: %.6f, Pitch: %.6f, Yaw: %.6f",
+               roll_meas, pitch_meas, yaw_meas);
 
     // 각속도와 선가속도 출력
   //  RCLCPP_INFO(this->get_logger(), "Angular Velocity - x: %.6f, y: %.6f, z: %.6f",
@@ -212,6 +241,7 @@ x_axis_force_cmd = 5;
 
  
     rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr wrench_timer_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint1_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint2_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint3_publisher_;    
@@ -221,6 +251,7 @@ x_axis_force_cmd = 5;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr roll_axis_publisher_;     
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pitch_axis_publisher_;           
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr yaw_axis_publisher_;    
+    rclcpp::Publisher<ros_gz_interfaces::msg::EntityWrench>::SharedPtr wrench_publisher_;    
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_;    
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr link_yaw_imu_subscriber_;
     rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr position_subscriber_;

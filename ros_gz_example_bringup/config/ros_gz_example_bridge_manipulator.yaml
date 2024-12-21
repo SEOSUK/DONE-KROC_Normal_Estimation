@@ -10,7 +10,7 @@
   gz_type_name: "gz.msgs.Model"
   direction: GZ_TO_ROS
 - ros_topic_name: "/manipulator/imu"
-  gz_topic_name: "/world/manipulator_world/model/manipulator/link/link_yaw/sensor/imu_sensor/imu"
+  gz_topic_name: "/world/manipulator_world/model/manipulator/link/link_drone/sensor/imu_sensor/imu"
   ros_type_name: "sensor_msgs/msg/Imu"
   gz_type_name: "gz.msgs.IMU"
   direction: GZ_TO_ROS  
@@ -24,3 +24,9 @@
   ros_type_name: "geometry_msgs/msg/PoseArray"
   gz_type_name: "gz.msgs.Pose_V"
   direction: GZ_TO_ROS  
+- ros_topic_name: "/link_drone/wrench"
+  gz_topic_name: "/world/manipulator_world/wrench/persistent"
+  ros_type_name: "ros_gz_interfaces/msg/EntityWrench"
+  gz_type_name: "ignition.msgs.EntityWrench"
+  direction: ROS_TO_GZ
+
