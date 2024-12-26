@@ -70,7 +70,9 @@
         "cinttypes": "cpp",
         "typeindex": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "regex": "cpp",
+        "core": "cpp"
     },
     "python.autoComplete.extraPaths": [
         "/home/mrlseuk/ros2_ws/install/turtle_demo_controller/lib/python3.10/site-packages",
