@@ -101,11 +101,11 @@
         <link name="link_1">
           <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>
             <inertial>
-                <mass>0.5</mass>
+                <mass>0.0001</mass>
                 <inertia>
-		    <ixx>0.048</ixx>
-		    <iyy>0.048</iyy>
-		    <izz>0.0025</izz>
+		    <ixx>0.0001</ixx>
+		    <iyy>0.0001</iyy>
+		    <izz>0.0001</izz>
                 </inertia>
             </inertial>
             <visual name="visual_link_1">
@@ -179,11 +179,11 @@
         <link name="link_2">
             <pose relative_to="link_1">0 0.1 0.05 -1.57 0 0</pose>
             <inertial>
-                <mass>2.0</mass>
+                <mass>0.0001</mass>
                 <inertia>
-		    <ixx>0.084</ixx>
-		    <iyy>0.084</iyy>
-		    <izz>0.005</izz>
+		    <ixx>0.0001</ixx>
+		    <iyy>0.0001</iyy>
+		    <izz>0.0001</izz>
                 </inertia>
             </inertial>
             <visual name="visual_link_2">
@@ -259,11 +259,11 @@
         <link name="link_3">
             <pose relative_to="link_2">0 0 0.2 0 0 0</pose>
             <inertial>
-                <mass>2.0</mass>
+                <mass>0.0001</mass>
                 <inertia>
-		    <ixx>0.084</ixx>
-		    <iyy>0.084</iyy>
-		    <izz>0.005</izz>
+		    <ixx>0.0001</ixx>
+		    <iyy>0.0001</iyy>
+		    <izz>0.0001</izz>
                 </inertia>
             </inertial>
             <visual name="visual_link_3">

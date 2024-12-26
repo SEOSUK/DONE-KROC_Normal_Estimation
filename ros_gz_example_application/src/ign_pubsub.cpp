@@ -22,16 +22,12 @@ class ign_pubsub : public rclcpp::Node
     ign_pubsub()
     : Node("ign_pubsub"), count_(0)
     {
+      wrench_msg.entity.name = "link_drone"; // 링크 이름
+      wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
+      
       cmd_joint1_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_1/command", 10);
       cmd_joint2_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_2/command", 10);      
-      cmd_joint3_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_3/command", 10);      
-      x_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_x/command", 10);            
-      y_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_y/command", 10);                        
-      z_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_z/command", 10);            
-      roll_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_r/command", 10);            
-      pitch_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_p/command", 10);                  
-      yaw_axis_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_yaw/command", 10);            
-      wrench_publisher_ = this->create_publisher<ros_gz_interfaces::msg::EntityWrench>("/link_drone/wrench", 10);
+      cmd_joint3_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_3/command", 10);            wrench_publisher_ = this->create_publisher<ros_gz_interfaces::msg::EntityWrench>("/link_drone/wrench", 10);
       
         joint_state_subscriber_ = this->create_subscription<sensor_msgs::msg::JointState>(
             "/manipulator/joint_states", 10,
@@ -46,19 +42,16 @@ class ign_pubsub : public rclcpp::Node
       timer_ = this->create_wall_timer(
       10ms, std::bind(&ign_pubsub::timer_callback, this));
 
-        wrench_timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(500),
-            std::bind(&ign_pubsub::publish_wrench, this));
-
     }
 
   private:
 	    void timer_callback()
 	    {	//main loop, 100Hz
-		set_command();
-		PID_controller();		
+		set_traj();
+		// PID_controller();		
 		data_publish();     	    
     }
+
 
   double saturation(double max, double min, double value){
   if (value > max) value = max;
@@ -88,62 +81,18 @@ class ign_pubsub : public rclcpp::Node
 
 
 
-void set_command()
+void set_traj()
 {
     // 시간 증가 (100Hz 기준, 매 호출마다 0.01초 증가)
     time_cnt++;
-    double time = time_cnt / 100.0;
+    double time = time_cnt / 1.0;
 
 
 
-    // Phase 1: Move in the z-direction (5초 ~ 10초, 선형적으로 5m 상승)
-    if (time >= 5.0 && time < 10.0)
-    {
-        double t_normalized = (time - 5.0) / (10.0 - 5.0); // Normalized time (0 to 1)
-        z_axis_cmd = t_normalized * 5.0;                   // Linear profile (0 to 5m)
-    }
 
-    // Phase 2: Rotate in roll direction (10초 ~ 15초, 선형적으로 10도 회전)
-    else if (time >= 10.0 && time < 15.0)
-    {
-        z_axis_cmd = 5.0;                                 // 유지된 z 위치
-        double t_normalized = (time - 10.0) / (15.0 - 10.0); // Normalized time (0 to 1)
-        yaw_axis_cmd = t_normalized * - 60.0 * (M_PI / 180.0); // Linear profile (0 to 10 deg in radians)
-    }
 
-    // Phase 3: Rotate in yaw direction (15초 ~ 20초, 선형적으로 45도 회전)
-    else if (time >= 15.0 && time < 20.0)
-    {
-        z_axis_cmd = 5.0;                                 // 유지된 z 위치
-        yaw_axis_cmd = - 60.0 * (M_PI / 180.0);            // 유지된 roll 위치
-        double t_normalized = (time - 15.0) / (20.0 - 15.0); // Normalized time (0 to 1)
-        roll_axis_cmd = t_normalized * 45.0 * (M_PI / 180.0); // Linear profile (0 to 45 deg in radians)
-    }
 
-x_axis_force_cmd = 5;
 }
-
-
-    void publish_wrench()
-    {
-        auto msg = ros_gz_interfaces::msg::EntityWrench();
-        // 엔티티 이름 및 유형 설정
-        msg.entity.name = "link_drone";
-        msg.entity.type = ros_gz_interfaces::msg::Entity::LINK;
-
-        // 힘과 토크 설정
-        msg.wrench.force.x = 0.0;
-        msg.wrench.force.y = 0.0;
-        msg.wrench.force.z = 500.0;  // 500 N 힘 적용
-        msg.wrench.torque.x = 0.0;
-        msg.wrench.torque.y = 0.0;
-        msg.wrench.torque.z = 0.0;
-
-        // 메시지 발행
-        RCLCPP_INFO(this->get_logger(), "Publishing wrench message");
-        wrench_publisher_->publish(msg);
-    }
-
 
 
 
@@ -153,23 +102,19 @@ x_axis_force_cmd = 5;
 	      joint_1_cmd_msg.data = joint_1_cmd;
 	      joint_2_cmd_msg.data = joint_2_cmd;
 	      joint_3_cmd_msg.data = joint_3_cmd;	      
-	      roll_axis_msg.data = roll_tau_cmd;	      
-	      pitch_axis_msg.data = pitch_tau_cmd;	      
-	      yaw_axis_msg.data = yaw_tau_cmd;
-	      x_axis_msg.data = x_axis_force_cmd;	      
-	      y_axis_msg.data = y_axis_force_cmd;
-	      z_axis_msg.data = z_axis_force_cmd;
+        wrench_msg.wrench.force.x = x_axis_force_cmd;
+        wrench_msg.wrench.force.y = y_axis_force_cmd;
+        wrench_msg.wrench.force.z = z_axis_force_cmd;  // 500 N 힘 적용
+        wrench_msg.wrench.torque.x = 3;
+        wrench_msg.wrench.torque.y = pitch_tau_cmd;
+        wrench_msg.wrench.torque.z = yaw_tau_cmd;
 	    //  RCLCPP_INFO(this->get_logger(), "joint_1_meas: '%lf' joint_2_meas: '%lf'", joint_1_meas_angle, joint_2_meas_angle);
 
 	      cmd_joint1_publisher_->publish(joint_1_cmd_msg);
 	      cmd_joint2_publisher_->publish(joint_2_cmd_msg);       
 	      cmd_joint3_publisher_->publish(joint_3_cmd_msg);       	      
-	      x_axis_publisher_->publish(x_axis_msg);   
-	      y_axis_publisher_->publish(y_axis_msg);   	      	      
-	      z_axis_publisher_->publish(z_axis_msg);   
-	      roll_axis_publisher_->publish(roll_axis_msg);   	
-	      pitch_axis_publisher_->publish(pitch_axis_msg);   	            
-	      yaw_axis_publisher_->publish(yaw_axis_msg);   
+        wrench_publisher_->publish(wrench_msg);
+
 	    }
  
  	    void joint_state_subsciber_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -200,7 +145,7 @@ x_axis_force_cmd = 5;
    yaw_vel_meas = msg->angular_velocity.z;
 
     // RPY 출력
-    RCLCPP_INFO(this->get_logger(), "Orientation (RPY) - Roll: %.6f, Pitch: %.6f, Yaw: %.6f",
+    RCLCPP_INFO(this->get_logger(), "Orientation_IMU (RPY) - Roll: %.6f, Pitch: %.6f, Yaw: %.6f",
                roll_meas, pitch_meas, yaw_meas);
 
     // 각속도와 선가속도 출력
@@ -217,19 +162,19 @@ x_axis_force_cmd = 5;
         // RCLCPP_INFO(this->get_logger(), "Received PoseArray message with %ld poses", msg->poses.size());
 
         // link_yaw의 id는 7로 고정
-        const int link_yaw_id = 7;
+        const int link_yaw_id = 1;
 
         if (link_yaw_id < msg->poses.size())
         {
             const auto &pose = msg->poses[link_yaw_id];
-     //       RCLCPP_INFO(this->get_logger(), "link_yaw Pose:");
-     //       RCLCPP_INFO(this->get_logger(), "Position - x: %.6f, y: %.6f, z: %.6f",
-     //                   pose.position.x, pose.position.y, pose.position.z);
-     //       RCLCPP_INFO(this->get_logger(), "Orientation - x: %.6f, y: %.6f, z: %.6f, w: %.6f",
-     //                   pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
-	x_axis_meas = pose.position.x;
-	y_axis_meas = pose.position.y;
-	z_axis_meas = pose.position.z;                        
+          //  RCLCPP_INFO(this->get_logger(), "link_yaw Pose:");
+          //  RCLCPP_INFO(this->get_logger(), "Position - x: %.6f, y: %.6f, z: %.6f",
+                      //  pose.position.x, pose.position.y, pose.position.z);
+          //  RCLCPP_INFO(this->get_logger(), "Orientation - x: %.6f, y: %.6f, z: %.6f, w: %.6f",
+                      //  pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+          x_axis_meas = pose.position.x;
+          y_axis_meas = pose.position.y;
+          z_axis_meas = pose.position.z;                        
         }
         else
         {
@@ -259,12 +204,11 @@ x_axis_force_cmd = 5;
     std_msgs::msg::Float64 joint_1_cmd_msg;
     std_msgs::msg::Float64 joint_2_cmd_msg;
     std_msgs::msg::Float64 joint_3_cmd_msg;    
-    std_msgs::msg::Float64 x_axis_msg;      
-    std_msgs::msg::Float64 y_axis_msg;  
-    std_msgs::msg::Float64 z_axis_msg;    
-    std_msgs::msg::Float64 roll_axis_msg;        
-    std_msgs::msg::Float64 pitch_axis_msg;                      
-    std_msgs::msg::Float64 yaw_axis_msg;        
+    //TODO:: 아래 세 줄 정의 제대로 하기
+    ros_gz_interfaces::msg::EntityWrench wrench_msg;
+    // msg.entity.name = "link_drone";
+    // msg.entity.type = ros_gz_interfaces::msg::Entity::LINK;
+
     double joint_1_cmd;
     double joint_2_cmd;
     double joint_3_cmd;    

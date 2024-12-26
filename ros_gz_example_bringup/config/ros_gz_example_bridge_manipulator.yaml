@@ -25,7 +25,7 @@
   gz_type_name: "gz.msgs.Pose_V"
   direction: GZ_TO_ROS  
 - ros_topic_name: "/link_drone/wrench"
-  gz_topic_name: "/world/manipulator_world/wrench/persistent"
+  gz_topic_name: "/world/manipulator_world/wrench"
   ros_type_name: "ros_gz_interfaces/msg/EntityWrench"
   gz_type_name: "ignition.msgs.EntityWrench"
   direction: ROS_TO_GZ

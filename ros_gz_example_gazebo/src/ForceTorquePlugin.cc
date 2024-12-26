@@ -54,6 +54,14 @@ class ignition::gazebo::systems::ForceTorquePluginPrivate
 
   /// \brief A mutex to protect wrenches
   public: std::mutex mutex;
+  
+  /// ADDD
+  /// \brief 마지막으로 받은 ROS2 Wrench 메시지
+  public: std::optional<msgs::EntityWrench> lastWrench;
+
+  /// \brief 새로운 ROS2 메시지를 수신했는지 여부
+  public: bool newWrenchReceived{false};
+  
 };
 
 /// \brief Extract wrench information from a message.
@@ -214,75 +222,57 @@ void ForceTorquePlugin::PreUpdate(const UpdateInfo &_info,
 
   std::lock_guard<std::mutex> lock(this->dataPtr->mutex);
 
-  // Clear persistent wrenches
-  while (!this->dataPtr->clearWrenches.empty())
-  {
-    auto clearMsg = this->dataPtr->clearWrenches.front();
-    auto clearEntity = entityFromMsg(_ecm, clearMsg);
-
-    for (auto msgIt = this->dataPtr->persistentWrenches.begin();
-         msgIt != this->dataPtr->persistentWrenches.end(); msgIt++)
-    {
-      auto persistentEntity = entityFromMsg(_ecm, msgIt->entity());
-      if (persistentEntity == clearEntity)
-      {
-        this->dataPtr->persistentWrenches.erase(msgIt--);
-
-        if (this->dataPtr->verbose)
-        {
-          igndbg << "Clearing persistent wrench for entity [" << clearEntity
-                 << "]" << std::endl;
-        }
-      }
-    }
-
-    this->dataPtr->clearWrenches.pop();
-  }
-
-  // Only apply wrenches when not paused
+  // 시뮬레이션이 일시정지된 경우 종료
   if (_info.paused)
     return;
 
-  // Apply instantaneous wrenches
-  while (!this->dataPtr->newWrenches.empty())
+  // ROS2 메시지가 없는 경우에도 마지막 힘을 유지
+  math::Vector3d force{0, 0, 0};
+  math::Vector3d torque{0, 0, 0};
+
+  if (this->dataPtr->newWrenchReceived)
   {
-    auto msg = this->dataPtr->newWrenches.front();
+    // 새로운 메시지가 있으면 업데이트
+    const auto &msg = this->dataPtr->lastWrench.value();
+    force = msgs::Convert(msg.wrench().force());
+    torque = msgs::Convert(msg.wrench().torque());
 
-    math::Vector3d force;
-    math::Vector3d torque;
-    auto link = decomposeMessage(_ecm, msg, force, torque);
-    if (!link.Valid(_ecm))
-    {
-      ignerr << "Entity not found." << std::endl
-             << msg.DebugString() << std::endl;
-      this->dataPtr->newWrenches.pop();
-      continue;
-    }
-
-    link.AddWorldWrench(_ecm, force, torque);
-
-    if (this->dataPtr->verbose)
-    {
-      igndbg << "Applying wrench [" << force << " " << torque << "] to entity ["
-             << link.Entity() << "] for 1 time step." << std::endl;
-    }
-
-    this->dataPtr->newWrenches.pop();
+    // 새로운 메시지 처리 후 플래그 리셋
+    this->dataPtr->newWrenchReceived = false;
+  }
+  else if (this->dataPtr->lastWrench.has_value())
+  {
+    // 새로운 메시지가 없으면 마지막 메시지를 사용
+    const auto &msg = this->dataPtr->lastWrench.value();
+    force = msgs::Convert(msg.wrench().force());
+    torque = msgs::Convert(msg.wrench().torque());
+  }
+  else
+  {
+    // 메시지가 없으면 기본값(0 힘) 유지
+    force = math::Vector3d(0, 0, 0);
+    torque = math::Vector3d(0, 0, 0);
   }
 
-  // Apply persistent wrenches at every time step
-  for (auto msg : this->dataPtr->persistentWrenches)
+  // 메시지에서 링크 추출 및 힘 적용
+  if (this->dataPtr->lastWrench.has_value())
   {
-    math::Vector3d force;
-    math::Vector3d torque;
+    const auto &msg = this->dataPtr->lastWrench.value();
     auto link = decomposeMessage(_ecm, msg, force, torque);
-    if (!link.Valid(_ecm))
+    if (link.Valid(_ecm))
     {
-      continue;
+      link.AddWorldWrench(_ecm, force, torque);
+
+      if (this->dataPtr->verbose)
+      {
+        igndbg << "Applying wrench [" << force << " " << torque
+               << "] to entity [" << link.Entity() << "]." << std::endl;
+      }
     }
-    link.AddWorldWrench(_ecm, force, torque);
   }
 }
+
+
 
 //////////////////////////////////////////////////
 void ForceTorquePluginPrivate::OnWrench(const msgs::EntityWrench &_msg)
@@ -297,7 +287,12 @@ void ForceTorquePluginPrivate::OnWrench(const msgs::EntityWrench &_msg)
   }
 
   this->newWrenches.push(_msg);
+
+  // 마지막 데이터 업데이트
+  this->lastWrench = _msg;
+  this->newWrenchReceived = true;
 }
+
 
 //////////////////////////////////////////////////
 void ForceTorquePluginPrivate::OnWrenchPersistent(const msgs::EntityWrench &_msg)

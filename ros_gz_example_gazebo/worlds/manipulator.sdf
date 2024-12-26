@@ -60,14 +60,10 @@
 
 
 	<plugin
-	  filename="ignition-gazebo-apply-link-wrench-system"
-	  name="gz::sim::systems::ApplyLinkWrench">
-	  <persistent>
+	  filename="ForceTorquePlugin"
+	  name="force_torque_plugin::ForceTorquePlugin">
 	    <entity_name>link_drone</entity_name>
 	    <entity_type>link</entity_type>
-	    <force>0 0 0</force>
-	    <torque>0 0 0</torque>
-	  </persistent>
 	</plugin>
 
 
