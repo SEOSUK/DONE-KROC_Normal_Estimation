@@ -44,10 +44,10 @@ class ign_pubsub : public rclcpp::Node
 
 
 
-    body_xyz_P.diagonal() << 4.0, 4.0, 3.0;
+    body_xyz_P.diagonal() << 2, 2, 3.0;
     body_xyz_I.diagonal() << 0.001, 0.001, 0.001;
-    body_rpy_P.diagonal() << 0.1, 0.1, 0.002;
-    body_rpy_D.diagonal() << 0.000, 0.000, 0.000;
+    body_rpy_P.diagonal() << 0.8, 0.8, 0.0005;
+    body_rpy_D.diagonal() << 0.005, 0.005, 0.0001;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -57,7 +57,7 @@ class ign_pubsub : public rclcpp::Node
 	    void timer_callback()
 	    {	//main loop, 100Hz
 		set_traj();
-		// PID_controller();		
+		PID_controller();		
 		data_publish();     	    
     }
 
@@ -88,6 +88,10 @@ class ign_pubsub : public rclcpp::Node
   body_rpy_cmd = Rot_G2D(global_rpy_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
 
   body_rpy_error = body_rpy_cmd - body_rpy_meas;
+  // Wrapping to [-π, π] range
+  body_rpy_error[2] = std::atan2(std::sin(body_rpy_error[2]), std::cos(body_rpy_error[2]));
+
+
   body_rpy_error_d = body_rpy_vel_meas;
 
   body_torque_cmd = body_rpy_P * body_rpy_error + body_rpy_D * body_rpy_error_d;

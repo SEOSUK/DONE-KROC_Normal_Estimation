@@ -100,6 +100,6 @@ def generate_launch_description():
                               description='Open RViz.'),
         bridge,
         robot_state_publisher,
-#        rviz,
+        rviz,
         ign_pubsub_node  # 추가된 ign_pubsub 노드        
     ])

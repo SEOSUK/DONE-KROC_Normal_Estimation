@@ -55,7 +55,7 @@
             </visual>
         <sensor name="imu_sensor" type="imu">
           <always_on>1</always_on>
-          <update_rate>30</update_rate>
+          <update_rate>300</update_rate>
           <visualize>true</visualize>
         </sensor>
       </link>

@@ -10,7 +10,7 @@
 <sdf version="1.8">
   <world name="manipulator_world">
     <!-- 물리, 센서, 장면 플러그인 추가 -->
-      <gravity>0 0 0</gravity> <!-- 중력을 명시적으로 다시 설정 -->
+      <gravity>0 0 -9.81</gravity> <!-- 중력을 명시적으로 다시 설정 -->
     
     <plugin
       filename="ignition-gazebo-physics-system"
