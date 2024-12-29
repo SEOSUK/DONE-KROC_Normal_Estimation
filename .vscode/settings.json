@@ -72,7 +72,9 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "regex": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "bitset": "cpp",
+        "any": "cpp"
     },
     "python.autoComplete.extraPaths": [
         "/home/mrlseuk/ros2_ws/install/turtle_demo_controller/lib/python3.10/site-packages",

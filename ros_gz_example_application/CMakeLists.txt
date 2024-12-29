@@ -15,10 +15,14 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(ros_gz_interfaces REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 
 add_executable(ign_pubsub src/ign_pubsub.cpp)
-ament_target_dependencies(ign_pubsub rclcpp std_msgs sensor_msgs ros_gz_interfaces)
+ament_target_dependencies(ign_pubsub rclcpp std_msgs sensor_msgs ros_gz_interfaces geometry_msgs tf2 tf2_ros visualization_msgs)
 install(TARGETS
   ign_pubsub
   DESTINATION lib/${PROJECT_NAME})

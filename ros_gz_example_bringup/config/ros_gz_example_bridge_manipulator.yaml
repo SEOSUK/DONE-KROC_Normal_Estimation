@@ -14,6 +14,11 @@
   ros_type_name: "sensor_msgs/msg/Imu"
   gz_type_name: "gz.msgs.IMU"
   direction: GZ_TO_ROS  
+- ros_topic_name: "/EE/imu"
+  gz_topic_name: "/world/manipulator_world/model/manipulator/link/link_3/sensor/imu_End_Effector/imu"
+  ros_type_name: "sensor_msgs/msg/Imu"
+  gz_type_name: "gz.msgs.IMU"
+  direction: GZ_TO_ROS  
 - ros_topic_name: "/dynamic_pose/info"
   gz_topic_name: "/world/manipulator_world/dynamic_pose/info"
   ros_type_name: "geometry_msgs/msg/PoseArray"
