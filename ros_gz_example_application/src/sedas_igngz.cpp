@@ -19,56 +19,76 @@
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include "sedas_rot.hpp"
 
+
 using namespace std::chrono_literals;
 
 /* This example creates a subclass of Node and uses std::bind() to register a
 * member function as a callback from the timer. */
 
-class ign_pubsub : public rclcpp::Node
+class sedas_igngz : public rclcpp::Node
 {
   public:
-    ign_pubsub()
-      : Node("ign_pubsub"), tf_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(this)), count_(0)
+    sedas_igngz()
+      : Node("sedas_igngz"), tf_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(this)), count_(0)
     {      
       // QoS 설정
       rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(10))
                                       .reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE)
                                       .durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
+
+      // Cmd to Gazebo
       cmd_joint1_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_1/command", qos_settings);
       cmd_joint2_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_2/command", qos_settings);      
       cmd_joint3_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_3/command", qos_settings);            
       wrench_publisher_ = this->create_publisher<ros_gz_interfaces::msg::EntityWrench>("/link_drone/wrench", qos_settings);
+
+      // visualize
       velocity_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("/velocity_marker", qos_settings);
+
+      // State Pub
       state_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_vector", qos_settings);            
-      commanded_publsiher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/commanded_input_U", qos_settings);
+      body_rpy_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/body_rpy", qos_settings);            
 
 
 
+
+      // sub from gazebo
       joint_state_subscriber_ = this->create_subscription<sensor_msgs::msg::JointState>(
           "/manipulator/joint_states", qos_settings,
-          std::bind(&ign_pubsub::joint_state_subsciber_callback, this, std::placeholders::_1));
+          std::bind(&sedas_igngz::joint_state_subsciber_callback, this, std::placeholders::_1));
       link_yaw_imu_subscriber_ = this->create_subscription<sensor_msgs::msg::Imu>(
           "/manipulator/imu", qos_settings,
-          std::bind(&ign_pubsub::imu_subscriber_callback, this, std::placeholders::_1));
-
-
+          std::bind(&sedas_igngz::imu_subscriber_callback, this, std::placeholders::_1));
       position_subscriber_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
           "/manipulator/pose_info", qos_settings,
-          std::bind(&ign_pubsub::global_pose_callback, this, std::placeholders::_1));            
-	
+          std::bind(&sedas_igngz::global_pose_callback, this, std::placeholders::_1));            
+
+      // Cimmand Input
+      Command_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+          "/command_input_U", qos_settings,
+          std::bind(&sedas_igngz::state_input_U_callback, this, std::placeholders::_1));            
+      
+
+
+
+    // pub List
+    // Joint* cmd publisher to Gazebo
+    // Wrench cmd Publisher to Gazebo
+    // State "well defined"         // Global based
+
+    // sub List
+    // Joint* state from Gazebo
+    // Wrench* state from Gazebo
+    // Command Input: xyzrpyqqq     // body based
+
+
       timer_ = this->create_wall_timer(
-      5ms, std::bind(&ign_pubsub::timer_callback, this));
+      5ms, std::bind(&sedas_igngz::timer_callback, this));
 
       timer_visual = this->create_wall_timer(
-      100ms, std::bind(&ign_pubsub::slower_callback, this));
+      100ms, std::bind(&sedas_igngz::slower_callback, this));
 
-
-    body_xyz_P.diagonal() << 20, 20, 50;
-    body_xyz_I.diagonal() << 0.1, 0.1, 2;
-    body_xyz_D.diagonal() << 1, 1, 5;
-    body_rpy_P.diagonal() << 20, 20, 5;
-    body_rpy_D.diagonal() << 3, 3, 0.5;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -78,10 +98,6 @@ class ign_pubsub : public rclcpp::Node
 	    void timer_callback()
     {	//main loop, 100Hz
     // 현재 시간 계산
-      set_state_FK();      
-      set_state_dot_FK();
-      set_traj();
-      PID_controller();		
 
       data_publish();     	    
       tf_publish();      
@@ -89,169 +105,58 @@ class ign_pubsub : public rclcpp::Node
 
     void slower_callback()
     {
-      calculate_end_effector_velocity();
-      tf_publish();      
+      // calculate_end_effector_velocity();
+      // tf_publish();      
     }
-
-
-
-  double saturation(double max, double min, double value){
-  if (value > max) value = max;
-  else if (value < min) value = min;
-  return value;
-  }
-
-
-
-void PID_controller()
-{
-
-  global_xyz_error = global_xyz_cmd - global_xyz_meas;
-  body_xyz_error = Rot_G2D(global_xyz_error, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
-  body_xyz_error_integral += body_xyz_error * delta_time;
-  body_xyz_error_d = (body_xyz_error - prev_body_xyz_error) / delta_time;
-  prev_body_xyz_error = body_xyz_error;
-
-
-  body_force_cmd = body_xyz_P * body_xyz_error + body_xyz_I * body_xyz_error_integral + body_xyz_D * body_xyz_error_d;
-
-  global_force_cmd = Rot_D2G(body_force_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
-
-
-
-
-  body_rpy_cmd = Rot_G2D(global_rpy_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
-
-  body_rpy_error = body_rpy_cmd - body_rpy_meas;
-  // Wrapping to [-π, π] range
-  body_rpy_error[2] = std::atan2(std::sin(body_rpy_error[2]), std::cos(body_rpy_error[2]));
-  body_rpy_error_integral += body_rpy_error * delta_time;
-  body_rpy_error_d = - body_rpy_vel_meas;
-
-  body_torque_cmd = body_rpy_P * body_rpy_error + body_rpy_D * body_rpy_error_d;
-
-
-  global_torque_cmd = Rot_D2G(body_torque_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
-
-
-
-}
-
-
-
-void set_traj()
-{
-    // 시간 증가 (100Hz 기준, 매 호출마다 0.01초 증가)
-    time_cnt++;
-    double time = time_cnt * delta_time - 5;
-
-    // Joint 명령의 누적 각도를 저장할 변수 (연속성을 보장하기 위해)
-    static double joint1_accum_angle = 0.0;
-    static double joint2_accum_angle = 0.0;
-    static double joint3_accum_angle = 0.0;
-
-    // 명령 생성
-    if (time <= 5.0) {
-        // 초기 상태, 명령 없음
-        global_xyz_cmd.setZero();
-        joint_angle_cmd.setZero();
-        global_rpy_cmd.setZero();
-    } else if (time > 5.0 && time <= 10.0) {
-        // 5초부터 10초까지 Z축으로 2미터 상승
-        global_xyz_cmd[2] = 2 * ((time - 5.0) / 5.0);
-    } else if (time > 10.0 && time <= 15.0) {
-        // 10초부터 15초까지 Joint 1이 0도에서 160도로 천천히 상승
-        joint_angle_cmd[0] = (160 * M_PI / 180) * ((time - 10.0) / 5.0); // Joint 1 각도
-    } else if (time > 15.0 && time <= 20.0) {
-        // 15초부터 20초까지 고정
-        global_xyz_cmd[2] = 2.0; // Z축 고정
-    } else if (time > 20.0 && time <= 25.0) {
-        // 20초부터 25초까지 Joint 2가 0도에서 180도로 천천히 상승
-        joint_angle_cmd[1] = (70 * M_PI / 180) * ((time - 20.0) / 5.0); // Joint 2 각도
-    } else if (time > 25.0 && time <= 30.0) {
-        // 25초부터 30초까지 Z축 고정, X축 원점 복귀
-        global_xyz_cmd[2] = 2.0; // Z축 고정
-    } else if (time > 30.0) {
-        // 30초 이후 Joint 명령을 연속적으로 sin 파형으로 설정
-        double t = time - 30.0;
-        joint1_accum_angle += delta_time * 45 * M_PI / 180 * std::cos(2 * M_PI * t / 5);
-        joint2_accum_angle += delta_time * 30 * M_PI / 180 * std::cos(2 * M_PI * t / 4);
-        joint3_accum_angle += delta_time * 25 * M_PI / 180 * std::cos(2 * M_PI * t / 3);
-    }
-
-    // 디버깅 정보 출력
-    // RCLCPP_INFO(this->get_logger(), "Xdes: '%lf', Ydes: '%lf', Zdes: '%lf'", global_xyz_cmd[0], global_xyz_cmd[1], global_xyz_cmd[2]);
-    // RCLCPP_INFO(this->get_logger(), "YawCmd: '%lf'", global_rpy_cmd[2]);
-    // RCLCPP_INFO(this->get_logger(), "JointCmd: q1='%lf', q2='%lf', q3='%lf'", joint_angle_cmd[0], joint_angle_cmd[1], joint_angle_cmd[2]);
-}
-
-
-
-
-
-
 
 
 
 void data_publish()
 {	// publish!!
-  joint_1_cmd_msg.data = joint_angle_cmd[0];
-  joint_2_cmd_msg.data = joint_angle_cmd[1];
-  joint_3_cmd_msg.data = joint_angle_cmd[2];	      
-  wrench_msg.wrench.force.x = global_force_cmd[0];
-  wrench_msg.wrench.force.y = global_force_cmd[1];
-  wrench_msg.wrench.force.z = global_force_cmd[2];  // 500 N 힘 적용
-  wrench_msg.wrench.torque.x = global_torque_cmd[0];
-  wrench_msg.wrench.torque.y = global_torque_cmd[1];
-  wrench_msg.wrench.torque.z = global_torque_cmd[2];
-//  RCLCPP_INFO(this->get_logger(), "joint_1_meas: '%lf' joint_2_meas: '%lf'", joint_1_meas_angle, joint_2_meas_angle);
-
-  cmd_joint1_publisher_->publish(joint_1_cmd_msg);
-  cmd_joint2_publisher_->publish(joint_2_cmd_msg);       
-  cmd_joint3_publisher_->publish(joint_3_cmd_msg);       	      
-  wrench_publisher_->publish(wrench_msg);
-
-
-
-
+  wrench_msg.wrench.force.x = command_input_U[0];
+  wrench_msg.wrench.force.y = command_input_U[1];
+  wrench_msg.wrench.force.z = command_input_U[2];  // 500 N 힘 적용
+  wrench_msg.wrench.torque.x = command_input_U[3];
+  wrench_msg.wrench.torque.y = command_input_U[4];
+  wrench_msg.wrench.torque.z = command_input_U[5];
+  joint_1_cmd_msg.data = command_input_U[6];
+  joint_2_cmd_msg.data = command_input_U[7];
+  joint_3_cmd_msg.data = command_input_U[8];	      
 
 
   std_msgs::msg::Float64MultiArray state_msg;
   state_msg.data.push_back(global_xyz_meas[0]);
   state_msg.data.push_back(global_xyz_meas[1]);
   state_msg.data.push_back(global_xyz_meas[2]);
-  state_msg.data.push_back(quat_meas[0]);
-  state_msg.data.push_back(quat_meas[1]);
-  state_msg.data.push_back(quat_meas[2]);
-  state_msg.data.push_back(quat_meas[3]);
+  state_msg.data.push_back(global_rpy_meas[0]);
+  state_msg.data.push_back(global_rpy_meas[1]);
+  state_msg.data.push_back(global_rpy_meas[2]);
   state_msg.data.push_back(joint_angle_meas[0]);
   state_msg.data.push_back(joint_angle_meas[1]);
   state_msg.data.push_back(joint_angle_meas[2]);
 
+
+
+  std_msgs::msg::Float64MultiArray body_rpy_msg;
+body_rpy_msg.data.push_back(body_rpy_meas[0]);
+body_rpy_msg.data.push_back(body_rpy_meas[1]);
+body_rpy_msg.data.push_back(body_rpy_meas[2]);
+
+  body_rpy_publisher_->publish(body_rpy_msg);
+
+  // wrench_publisher_->publish(wrench_msg);
+  cmd_joint1_publisher_->publish(joint_1_cmd_msg);
+  cmd_joint2_publisher_->publish(joint_2_cmd_msg);       
+  cmd_joint3_publisher_->publish(joint_3_cmd_msg);       	      
+
+
   state_publisher_->publish(state_msg);
-
-
-
-  std_msgs::msg::Float64MultiArray commanded_input;
-  commanded_input.data.push_back(global_force_cmd[0]);
-  commanded_input.data.push_back(global_force_cmd[1]);
-  commanded_input.data.push_back(global_force_cmd[2]);
-  commanded_input.data.push_back(global_torque_cmd[0]);
-  commanded_input.data.push_back(global_torque_cmd[1]);
-  commanded_input.data.push_back(global_torque_cmd[2]);
-  commanded_input.data.push_back(joint_angle_cmd[0]);
-  commanded_input.data.push_back(joint_angle_cmd[1]);
-  commanded_input.data.push_back(joint_angle_cmd[2]);
-
-  commanded_publsiher_->publish(commanded_input);
-
-
 }
  
 void joint_state_subsciber_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-  joint_angle_meas[0] = msg->position[0] + M_PI / 2; // D-H Parameter!!
-  joint_angle_meas[1] = msg->position[1]; 
+  joint_angle_meas[0] = msg->position[0];
+  joint_angle_meas[1] = msg->position[1];
   joint_angle_meas[2] = msg->position[2];
   joint_angle_dot_meas[0] = msg->velocity[0];
   joint_angle_dot_meas[1] = msg->velocity[1];
@@ -270,11 +175,6 @@ void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
     double qy = msg->orientation.y;
     double qz = msg->orientation.z;
     double qw = msg->orientation.w;
-
-  quat_meas[0] = qx;
-  quat_meas[1] = qy;
-  quat_meas[2] = qz;
-  quat_meas[3] = qw;
 
     // Roll, Pitch, Yaw 계산
     body_rpy_meas[0] = std::atan2(2.0 * (qw * qx + qy * qz), 1.0 - 2.0 * (qx * qx + qy * qy));
@@ -331,117 +231,6 @@ void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 }
 
 
-void set_state_FK()
-{
- 
-    State << global_xyz_meas[0], global_xyz_meas[1], global_xyz_meas[2], 
-    global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2], 
-    joint_angle_meas[0], joint_angle_meas[1], joint_angle_meas[2];
-
-    // RCLCPP_INFO(this->get_logger(), "End State - x: %.3f, y: %.3f, z: %.3f, r: %lf p: %lf, y: %lf, q1: %.3f q2: %.3f, q3: %.3f", global_xyz_meas[0], global_xyz_meas[1], global_xyz_meas[2], global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2], joint_angle_meas[0], joint_angle_meas[1], joint_angle_meas[2]);
-
- 
-    // 기본적으로 드론의 Global Frame 기준 위치 및 자세를 기반으로 변환 행렬 T_w0 계산
-    Eigen::Matrix3d R_B = get_rotation_matrix(global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2]);
-    T_w0.block<3, 3>(0, 0) = R_B;
-    T_w0.block<3, 1>(0, 3) = global_xyz_meas;
-
-    // DH 파라미터 기반의 변환 행렬 정의
-    T_01 << std::cos(joint_angle_meas[0]), 0, std::sin(joint_angle_meas[0]), 0,
-            std::sin(joint_angle_meas[0]), 0, -std::cos(joint_angle_meas[0]), 0,
-            0, 1, 0, l1,
-            0, 0, 0, 1;
-
-    T_12 << std::cos(joint_angle_meas[1]), -std::sin(joint_angle_meas[1]), 0, l2 * std::cos(joint_angle_meas[1]),
-            std::sin(joint_angle_meas[1]), std::cos(joint_angle_meas[1]), 0, l2 * std::sin(joint_angle_meas[1]),
-            0, 0, 1, 0,
-            0, 0, 0, 1;
-
-    T_23 << std::cos(joint_angle_meas[2]), -std::sin(joint_angle_meas[2]), 0, l3 * std::cos(joint_angle_meas[2]),
-            std::sin(joint_angle_meas[2]), std::cos(joint_angle_meas[2]), 0, l3 * std::sin(joint_angle_meas[2]),
-            0, 0, 1, 0,
-            0, 0, 0, 1;
-
-    // Forward Kinematics 계산
-    Eigen::Matrix4d T_w1 = T_w0 * T_01;
-    Eigen::Matrix4d T_w2 = T_w1 * T_12;
-    Eigen::Matrix4d T_w3 = T_w2 * T_23;
-
-    // 엔드 이펙터의 위치 및 자세 추출
-    Eigen::Vector3d p_E = T_w3.block<3, 1>(0, 3); // 엔드 이펙터 위치
-    Eigen::Matrix3d R_E = T_w3.block<3, 3>(0, 0); // 엔드 이펙터 자세
-
-    FK_EE_Pos[0] = p_E[0];
-    FK_EE_Pos[1] = p_E[1];
-    FK_EE_Pos[2] = p_E[2];
-
-    // Global 기준 r, p, y angle 추출
-    FK_EE_Pos[3] = std::atan2(R_E(2, 1), R_E(2, 2));
-    FK_EE_Pos[4] = std::asin(-R_E(2, 0));
-    FK_EE_Pos[5] = std::atan2(R_E(1, 0), R_E(0, 0));
-
-    // T_w1 위치 및 자세 추출
-    Eigen::Vector3d p_w1 = T_w1.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w1 = T_w1.block<3, 3>(0, 0);
-    Tw1_Pos[0] = p_w1[0];
-    Tw1_Pos[1] = p_w1[1];
-    Tw1_Pos[2] = p_w1[2];
-    Tw1_Pos[3] = std::atan2(R_w1(2, 1), R_w1(2, 2));
-    Tw1_Pos[4] = std::asin(-R_w1(2, 0));
-    Tw1_Pos[5] = std::atan2(R_w1(1, 0), R_w1(0, 0));
-
-    // T_w2 위치 및 자세 추출
-    Eigen::Vector3d p_w2 = T_w2.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w2 = T_w2.block<3, 3>(0, 0);
-    Tw2_Pos[0] = p_w2[0];
-    Tw2_Pos[1] = p_w2[1];
-    Tw2_Pos[2] = p_w2[2];
-    Tw2_Pos[3] = std::atan2(R_w2(2, 1), R_w2(2, 2));
-    Tw2_Pos[4] = std::asin(-R_w2(2, 0));
-    Tw2_Pos[5] = std::atan2(R_w2(1, 0), R_w2(0, 0));
-
-    // T_w3 위치 및 자세 추출
-    Eigen::Vector3d p_w3 = T_w3.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w3 = T_w3.block<3, 3>(0, 0);
-    Tw3_Pos[0] = p_w3[0];
-    Tw3_Pos[1] = p_w3[1];
-    Tw3_Pos[2] = p_w3[2];
-    Tw3_Pos[3] = std::atan2(R_w3(2, 1), R_w3(2, 2));
-    Tw3_Pos[4] = std::asin(-R_w3(2, 0));
-    Tw3_Pos[5] = std::atan2(R_w3(1, 0), R_w3(0, 0));
-
-    // RCLCPP_INFO(this->get_logger(), "Global rpy angles - Roll: %.3f, Pitch: %.3f, Yaw: %.3f", roll, pitch, yaw);
-
-    // State 벡터 출력 (디버깅용)
-    // std::cout << "State: \n" << State_dot << std::endl;
-}
-
-
-void set_state_dot_FK()
-{
-    // 수치미분 계산
-    Eigen::VectorXd raw_State_dot = (State - State_prev) / delta_time;
-    State_prev = State;
-
-    // Low Pass Filter를 적용하기 위한 파라미터 계산
-    double cutoff_freq = 40.0; // Hz
-    double alpha = 1.0 / (1.0 + (1.0 / (2.0 * M_PI * cutoff_freq * delta_time)));
-
-    // 필터 적용
-    for (int i = 0; i < State_dot.size(); i++) {
-        State_dot[i] = alpha * raw_State_dot[i] + (1.0 - alpha) * State_dot[i];
-    }
-
-    // 외부에서 측정한 속도값 적용 (필터를 사용하지 않음)
-    State_dot[3] = global_rpy_vel_meas[0];
-    State_dot[4] = global_rpy_vel_meas[1];
-    State_dot[5] = global_rpy_vel_meas[2];
-    State_dot[6] = joint_angle_dot_meas[0];
-    State_dot[7] = joint_angle_dot_meas[1];
-    State_dot[8] = joint_angle_dot_meas[2];
-}
-
-
 void visualize_velocity(const Eigen::Vector3d& velocity, const Eigen::Vector3d& position)
 {
     // DELETE 기존 마커
@@ -484,8 +273,6 @@ void visualize_velocity(const Eigen::Vector3d& velocity, const Eigen::Vector3d& 
 }
 
 
-
-
 void calculate_end_effector_velocity()
 {
     // State_dot 계산을 통해 속도 구하기
@@ -513,9 +300,9 @@ void calculate_end_effector_velocity()
     Eigen::Vector3d p_2 = T_w2.block<3, 1>(0, 3);
     Eigen::Vector3d p_3 = T_w3.block<3, 1>(0, 3);
 
-// std::cout << "Z1: " << Z1.transpose() << "\n";
-// std::cout << "Z2: " << Z2.transpose() << "\n";
-// std::cout << "Z3: " << Z3.transpose() << "\n";
+std::cout << "Z1: " << Z1.transpose() << "\n";
+std::cout << "Z2: " << Z2.transpose() << "\n";
+std::cout << "Z3: " << Z3.transpose() << "\n";
 
 
     J.block<3, 1>(0, 6) = Z1.cross(p_E - p_1);
@@ -542,9 +329,9 @@ void calculate_end_effector_velocity()
     visualize_velocity(linear_velocity, FK_EE_Pos.segment<3>(0));
 
 
-// std::cout << "T_w0: \n" << T_w0 << "\nT_01: \n" << T_01 << "\nT_12: \n" << T_12 << "\nT_23: \n" << T_23 << std::endl;
-// std::cout << "Z1: \n" << Z1 << "\nZ2: \n" << Z2 << "\nZ3: \n" << Z3 << std::endl;
-// std::cout << "Drone TF: (" << global_xyz_meas.transpose() << ", " << global_rpy_meas.transpose() << ")" << std::endl;
+std::cout << "T_w0: \n" << T_w0 << "\nT_01: \n" << T_01 << "\nT_12: \n" << T_12 << "\nT_23: \n" << T_23 << std::endl;
+std::cout << "Z1: \n" << Z1 << "\nZ2: \n" << Z2 << "\nZ3: \n" << Z3 << std::endl;
+std::cout << "Drone TF: (" << global_xyz_meas.transpose() << ", " << global_rpy_meas.transpose() << ")" << std::endl;
 
 }
 
@@ -682,6 +469,20 @@ void tf_publish()
 }
 
 
+void state_input_U_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+//fx fy fz taux tauy tauz tauq1 tauq2 tauq3 get
+      if (msg->data.size() != 9)
+      {
+     RCLCPP_INFO(this->get_logger(), "Input Size is something strange...!");
+
+        return ;
+      }
+
+      for (size_t i = 0; i < msg->data.size(); ++i) {
+        command_input_U[i] = msg->data[i];
+      }
+
+}
 
 
 
@@ -696,26 +497,23 @@ void tf_publish()
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr roll_axis_publisher_;     
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pitch_axis_publisher_;           
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr yaw_axis_publisher_;    
-  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_publisher_;
   rclcpp::Publisher<ros_gz_interfaces::msg::EntityWrench>::SharedPtr wrench_publisher_;    
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr body_rpy_publisher_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_;    
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr link_yaw_imu_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr position_subscriber_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr Command_subscriber_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr velocity_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr commanded_publsiher_;
 
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-    
+
 
   size_t count_;
   std_msgs::msg::Float64 joint_1_cmd_msg;
   std_msgs::msg::Float64 joint_2_cmd_msg;
   std_msgs::msg::Float64 joint_3_cmd_msg;    
-  //TODO:: 아래 세 줄 정의 제대로 하기
   ros_gz_interfaces::msg::EntityWrench wrench_msg;
-  // msg.entity.name = "link_drone";
-  // msg.entity.type = ros_gz_interfaces::msg::Entity::LINK;
-
 
   Eigen::Vector3d global_xyz_meas;
   Eigen::Vector3d global_xyz_cmd = Eigen::Vector3d::Zero();
@@ -749,10 +547,6 @@ void tf_publish()
   Eigen::Matrix3d body_rpy_P = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_rpy_I = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_rpy_D = Eigen::Matrix3d::Zero();
-  Eigen::VectorXd quat_meas = Eigen::VectorXd::Zero(4);
-
-
-  
 
 
   Eigen::Vector3d joint_angle_cmd;
@@ -768,12 +562,14 @@ void tf_publish()
   Eigen::VectorXd Tw2_Pos = Eigen::VectorXd::Zero(6);
   Eigen::VectorXd Tw3_Pos = Eigen::VectorXd::Zero(6);
   Eigen::Matrix4d T_w1, T_w2, T_w3, T_w0;
-    Eigen::Matrix4d T_01 = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d T_12 = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d T_23 = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d T_01 = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d T_12 = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d T_23 = Eigen::Matrix4d::Identity();
 
 
 
+
+  Eigen::VectorXd command_input_U = Eigen::VectorXd::Zero(9);
 
 
     double time;
@@ -791,7 +587,7 @@ int main(int argc, char * argv[])
 {
 //ros2 topic pub /joint_1/command std_msgs/msg/Float64 "{data: 1.0}"
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<ign_pubsub>());
+  rclcpp::spin(std::make_shared<sedas_igngz>());
   rclcpp::shutdown();
   return 0;
 }

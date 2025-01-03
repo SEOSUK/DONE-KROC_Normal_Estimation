@@ -19,13 +19,106 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(pinocchio REQUIRED)
+find_package(Eigen3 REQUIRED)  # Add Eigen3
 
 
+
+#IGNPUBSUB
 add_executable(ign_pubsub src/ign_pubsub.cpp)
-ament_target_dependencies(ign_pubsub rclcpp std_msgs sensor_msgs ros_gz_interfaces geometry_msgs tf2 tf2_ros visualization_msgs)
+ament_target_dependencies(ign_pubsub
+ rclcpp 
+ std_msgs 
+ sensor_msgs 
+ ros_gz_interfaces 
+ geometry_msgs 
+ tf2 
+ tf2_ros 
+ visualization_msgs)
+
 install(TARGETS
   ign_pubsub
   DESTINATION lib/${PROJECT_NAME})
+
+
+ target_include_directories(ign_pubsub PUBLIC
+ $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+ $<INSTALL_INTERFACE:include>
+ ${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
+)
+
+#PINOCCHIOTRY
+add_executable(pinocchio_try src/pinocchio_try.cpp)
+ament_target_dependencies(pinocchio_try
+ rclcpp 
+ std_msgs 
+ sensor_msgs 
+ geometry_msgs 
+ tf2 
+ tf2_ros 
+)
+ 
+target_link_libraries(pinocchio_try pinocchio::pinocchio)
+
+target_include_directories(pinocchio_try PUBLIC
+$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+$<INSTALL_INTERFACE:include>
+${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
+)
+
+install(TARGETS
+  pinocchio_try
+  DESTINATION lib/${PROJECT_NAME})
+
+
+#SEDAS_IGNGZ
+add_executable(sedas_igngz src/sedas_igngz.cpp)
+ament_target_dependencies(sedas_igngz
+ rclcpp 
+ std_msgs 
+ sensor_msgs 
+ ros_gz_interfaces 
+ geometry_msgs 
+ tf2 
+ tf2_ros 
+ visualization_msgs)
+
+target_include_directories(sedas_igngz PUBLIC
+$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+$<INSTALL_INTERFACE:include>
+${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
+)
+
+
+install(TARGETS
+sedas_igngz
+  DESTINATION lib/${PROJECT_NAME})
+
+
+
+#SEDAS_IGNGZ
+add_executable(sedas_control src/sedas_control.cpp)
+ament_target_dependencies(sedas_control
+ rclcpp 
+ std_msgs 
+ sensor_msgs 
+ ros_gz_interfaces 
+ geometry_msgs 
+ tf2 
+ tf2_ros 
+ visualization_msgs)
+
+ target_include_directories(sedas_control PUBLIC
+ $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+ $<INSTALL_INTERFACE:include>
+ ${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
+)
+
+
+install(TARGETS
+sedas_control
+  DESTINATION lib/${PROJECT_NAME})
+
 
 
 ament_package()
