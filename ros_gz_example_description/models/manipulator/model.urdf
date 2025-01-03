@@ -60,19 +60,19 @@
   <joint name="joint_2" type="revolute">
     <parent link="link_1"/>
     <child link="link_2"/>
-    <origin xyz="0.0 0 0.05" rpy="0 1.5708 0"/> <!-- link_1 끝에서 x축 방향으로 -90도 회전 -->
-    <axis xyz="0 -1 0"/> <!-- X축 회전 -->
+    <origin xyz="0.0 0 0.05" rpy="1.57 0 0"/> <!-- link_1 끝에서 x축 방향으로 -90도 회전 -->
+    <axis xyz="0 0 1"/> <!-- X축 회전 -->
     <limit lower="-1.57" upper="1.57" effort="100" velocity="10.0"/>
   </joint>
 
   <link name="link_2">
     <inertial>
-      <origin xyz="0.0 0 0.1" rpy="0 0 0"/>
+      <origin xyz="0.1 0 0" rpy="0 1.57 0"/>
       <mass value="0.5"/>
       <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
     </inertial>
     <visual>
-      <origin xyz="0.0 0 0.1" rpy="0 0 0"/>
+      <origin xyz="0.1 0 0" rpy="0 1.57 0"/>
       <geometry>
         <cylinder radius="0.02" length="0.2"/>
       </geometry>
@@ -81,7 +81,7 @@
       </material>
     </visual>
     <collision>
-      <origin xyz="0.0 0 0.1" rpy="0 0 0"/>
+      <origin xyz="0.1 0 0" rpy="0 1.57 0"/>
       <geometry>
         <cylinder radius="0.02" length="0.2"/>
       </geometry>
@@ -91,19 +91,19 @@
   <joint name="joint_3" type="revolute">
     <parent link="link_2"/>
     <child link="link_3"/>
-    <origin xyz="0 0 0.2" rpy="0 0 0"/> <!-- link_2 끝에서 y축 방향으로 연결 -->
-    <axis xyz="0 -1 0"/> <!-- X축 회전 -->
+    <origin xyz="0.2 0 0.0" rpy="0 0 0"/> <!-- link_1 끝에서 x축 방향으로 -90도 회전 -->
+    <axis xyz="0 0 1"/> <!-- X축 회전 -->
     <limit lower="-1.57" upper="1.57" effort="100" velocity="10.0"/>
   </joint>
 
   <link name="link_3">
     <inertial>
-      <origin xyz="0.0 0 0.1" rpy="0 0 0"/>
+      <origin xyz="0.1 0.0 0.0" rpy="0 1.57 0"/>
       <mass value="0.5"/>
       <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
     </inertial>
     <visual>
-      <origin xyz="0.0 0 0.1" rpy="0 0 0"/>
+      <origin xyz="0.1 0.0 0.0" rpy="0 1.57 0"/>
       <geometry>
         <cylinder radius="0.02" length="0.2"/>
       </geometry>
@@ -112,7 +112,7 @@
       </material>
     </visual>
     <collision>
-      <origin xyz="0.0 0 0.1" rpy="0 0 0"/>
+      <origin xyz="0.1 0.0 0.0" rpy="0 1.57 0"/>
       <geometry>
         <cylinder radius="0.02" length="0.2"/>
       </geometry>

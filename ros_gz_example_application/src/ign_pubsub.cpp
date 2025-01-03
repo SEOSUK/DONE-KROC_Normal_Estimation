@@ -179,6 +179,9 @@ void set_traj()
         joint3_accum_angle += delta_time * 25 * M_PI / 180 * std::cos(2 * M_PI * t / 3);
     }
 
+
+
+    joint_angle_cmd[2] = 45 * M_PI / 180;
     // 디버깅 정보 출력
     // RCLCPP_INFO(this->get_logger(), "Xdes: '%lf', Ydes: '%lf', Zdes: '%lf'", global_xyz_cmd[0], global_xyz_cmd[1], global_xyz_cmd[2]);
     // RCLCPP_INFO(this->get_logger(), "YawCmd: '%lf'", global_rpy_cmd[2]);
@@ -250,15 +253,15 @@ void data_publish()
  
 void joint_state_subsciber_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-  joint_angle_meas[0] = msg->position[0] + M_PI / 2; // D-H Parameter!!
-  joint_angle_meas[1] = msg->position[1]; 
-  joint_angle_meas[2] = msg->position[2];
   joint_angle_dot_meas[0] = msg->velocity[0];
   joint_angle_dot_meas[1] = msg->velocity[1];
   joint_angle_dot_meas[2] = msg->velocity[2];
   joint_effort_meas[0] = msg->effort[0];
   joint_effort_meas[1] = msg->effort[1];
   joint_effort_meas[2] = msg->effort[2];
+  joint_angle_meas[0] = msg->position[0]; // D-H Parameter!!
+  joint_angle_meas[1] = msg->position[1]; 
+  joint_angle_meas[2] = msg->position[2];
 }
  
 void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
