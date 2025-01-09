@@ -47,6 +47,8 @@ install(TARGETS
  ${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
 )
 
+target_link_libraries(ign_pubsub ButterworthFilter)
+
 #PINOCCHIOTRY
 add_executable(pinocchio_try src/pinocchio_try.cpp)
 ament_target_dependencies(pinocchio_try
@@ -119,6 +121,13 @@ install(TARGETS
 sedas_control
   DESTINATION lib/${PROJECT_NAME})
 
+#butterworth filter
+add_library(ButterworthFilter src/ButterworthFilter.cpp)
+target_include_directories(ButterworthFilter PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${EIGEN3_INCLUDE_DIR}  # Eigen의 include 경로 추가
+)
 
 
 ament_package()

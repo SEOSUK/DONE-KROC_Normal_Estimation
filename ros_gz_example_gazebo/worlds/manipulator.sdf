@@ -42,6 +42,11 @@
       filename="gz-sim-imu-system"
       name="gz::sim::systems::Imu">
     </plugin>
+    <plugin 
+        filename="ignition-gazebo-forcetorque-system" 
+        name="ignition::gazebo::systems::ForceTorque">
+      </plugin>
+
 
     <!-- 조명 설정 -->
     <light name="sun" type="directional">

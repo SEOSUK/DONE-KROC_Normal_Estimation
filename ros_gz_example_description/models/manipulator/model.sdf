@@ -77,6 +77,17 @@
             <friction>0.0</friction>
         </dynamics>
             </axis>
+                <!-- Force/Torque Sensor -->
+            <sensor name="force_torque_joint1_sensor" type="force_torque">
+                <update_rate>300</update_rate>
+                <always_on>true</always_on>
+                <visualize>true</visualize>
+                <topic>force_torque_joint1</topic>
+                <force_torque>
+                <frame>sensor</frame>
+                <measure_direction>parent_to_child</measure_direction>
+                </force_torque>
+            </sensor>            
         </joint>
         <plugin
             filename="ignition-gazebo-joint-position-controller-system"
@@ -99,7 +110,7 @@
     <!-- For manipulator -->
 
         <link name="link_1">
-          <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>
+          <pose relative_to="joint_1">0 0 0.05 0 0 0</pose>
             <inertial>
                 <mass>0.1</mass>
                 <inertia>
@@ -109,7 +120,7 @@
                 </inertia>
             </inertial>
             <visual name="visual_link_1">
-              <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>
+          <pose relative_to="link_1">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -122,7 +133,7 @@
                 </material>
             </visual>
             <collision name="collision_link_1">
-              <pose relative_to="link_drone">0 0 0.20 0 0 0</pose>
+          <pose relative_to="link_1">0 0 0 0 0 0</pose>
                 <geometry>
                     <cylinder>
                         <radius>0.03</radius>
@@ -132,7 +143,7 @@
             </collision>
             <!-- Joint 2 Visual (Sphere) -->
             <visual name="visual_joint_2">
-            <pose relative_to="link_1">0 0 0.05 0 0 0</pose>
+            <pose relative_to="link_1">0 0 0.05 1.57 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.04</radius>
@@ -159,6 +170,17 @@
             <friction>0.0</friction>
         </dynamics>
             </axis>
+                <!-- Force/Torque Sensor -->
+            <sensor name="force_torque_joint2_sensor" type="force_torque">
+                <update_rate>300</update_rate>
+                <always_on>true</always_on>
+                <visualize>true</visualize>
+                <topic>force_torque_joint2</topic>
+                <force_torque>
+                <frame>sensor</frame>
+                <measure_direction>parent_to_child</measure_direction>
+                </force_torque>
+            </sensor>                     
         </joint>
         <plugin
             filename="ignition-gazebo-joint-position-controller-system"
@@ -177,7 +199,7 @@
 
 
         <link name="link_2">
-            <pose relative_to="link_1">0.1 0 0.05 0 01.57 0</pose>
+            <pose relative_to="link_1">0.1 0 0.05 0 1.57 0</pose>
             <inertial>
                 <mass>0.5</mass>
                 <inertia>
@@ -210,7 +232,7 @@
             </collision>
             <!-- Joint 3 Visual (Sphere) -->
             <visual name="visual_joint_3">
-            <pose relative_to="link_2">0 0 0.1 0 0 0</pose>
+            <pose relative_to="joint_2">0.2 0 0 0 0 0</pose>
                 <geometry>
                     <sphere>
                         <radius>0.03</radius>
@@ -224,7 +246,7 @@
         </link>
         <!-- Joint 3 -->
         <joint name="joint_3" type="revolute">
-            <pose relative_to="link_2">0 0 0.1 0 0 0</pose>
+            <pose relative_to="joint_2">0.2 0 0 0 0 0</pose>
             <parent>link_2</parent>
             <child>link_3</child>
             <axis>
@@ -237,6 +259,17 @@
             <friction>0.0</friction>
         </dynamics>
             </axis>
+                <!-- Force/Torque Sensor -->
+            <sensor name="force_torque_joint3_sensor" type="force_torque">
+                <update_rate>300</update_rate>
+                <always_on>true</always_on>
+                <visualize>true</visualize>
+                <topic>force_torque_joint3</topic>
+                <force_torque>
+                <frame>sensor</frame>
+                <measure_direction>parent_to_child</measure_direction>
+                </force_torque>
+            </sensor>                        
         </joint>
         <plugin
             filename="ignition-gazebo-joint-position-controller-system"
