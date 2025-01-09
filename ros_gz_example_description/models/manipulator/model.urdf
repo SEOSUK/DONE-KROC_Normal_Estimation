@@ -119,4 +119,24 @@
       </geometry>
     </collision>
   </link>
+  
+  <joint name="joint_EE" type="fixed">
+    <parent link="link_3"/>
+    <child link="link_EE"/>
+  <origin xyz="0.2 0.0 0.0" rpy="0 0 0"/> <!-- link_3의 끝에 위치 -->    
+  </joint>  
+  
+  <link name="link_EE">
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.03"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0.0 1.0 0.0 1.0"/> <!-- 초록색 -->
+      </material>
+    </visual>
+  </link>  
+  
+  
 </robot>

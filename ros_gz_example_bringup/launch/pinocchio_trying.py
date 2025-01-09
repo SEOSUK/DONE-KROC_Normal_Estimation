@@ -103,6 +103,13 @@ def generate_launch_description():
         ]
     )
 
+    # Custom Node: sedas_rviz
+    sedas_rviz_node = Node(
+        package='ros_gz_example_application',
+        executable='sedas_rviz',
+        name='sedas_rviz',
+        output='screen',
+    )
 
     return LaunchDescription([
         gz_sim,
@@ -112,5 +119,6 @@ def generate_launch_description():
         robot_state_publisher,
         #rviz,
         ign_pubsub_node,  # 추가된 ign_pubsub 노드  
-	pinocchio_node
+	pinocchio_node,
+	sedas_rviz_node
     ])

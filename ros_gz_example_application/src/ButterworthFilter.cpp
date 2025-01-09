@@ -1,34 +1,19 @@
 #include "ButterworthFilter.hpp"
 #include <cmath>
 
-ButterworthFilter::ButterworthFilter(double cutoff_freq, double sampling_time) {
-    double omega = 2.0 * M_PI * cutoff_freq;
-    double ts = sampling_time;
+ButterworthFilter::ButterworthFilter(double cutoff_freq, double sampling_time)
+    : cutoff_freq_(cutoff_freq), sampling_time_(sampling_time),
+      prev_input_(0.0), prev_output_(0.0) {}
 
-    double tan_omega = tan(omega * ts / 2.0);
-    double norm = 1.0 / (1.0 + sqrt(2.0) * tan_omega + tan_omega * tan_omega);
+ButterworthFilter::ButterworthFilter() 
+    : ButterworthFilter(1.0, 0.01) {} // 기본 생성자에서 디폴트 값 설정
 
-    a0 = tan_omega * tan_omega * norm;
-    a1 = 2.0 * a0;
-    a2 = a0;
-    b1 = 2.0 * (tan_omega * tan_omega - 1.0) * norm;
-    b2 = (1.0 - sqrt(2.0) * tan_omega + tan_omega * tan_omega) * norm;
-
-    prev_input = {0.0, 0.0};
-    prev_output = {0.0, 0.0};
-}
-
-double ButterworthFilter::Filter(double input) {
-    double output = a0 * input + a1 * prev_input[0] + a2 * prev_input[1]
-                    - b1 * prev_output[0] - b2 * prev_output[1];
-
-    // Shift values
-    prev_input[1] = prev_input[0];
-    prev_input[0] = input;
-
-    prev_output[1] = prev_output[0];
-    prev_output[0] = output;
-
+double ButterworthFilter::apply(double input) {
+    // Butterworth 필터 간단 구현 (1차 필터)
+    double alpha = sampling_time_ / (sampling_time_ + (1.0 / (2.0 * M_PI * cutoff_freq_)));
+    double output = alpha * input + (1.0 - alpha) * prev_output_;
+    prev_input_ = input;
+    prev_output_ = output;
     return output;
 }
 

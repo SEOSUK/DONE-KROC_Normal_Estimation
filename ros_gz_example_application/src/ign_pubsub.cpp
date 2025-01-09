@@ -20,6 +20,8 @@
 #include "sedas_rot.hpp"
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include "ButterworthFilter.hpp"
+#include "FilteredVector.hpp"
+#include <iostream>
 
 using namespace std::chrono_literals;
 
@@ -33,10 +35,11 @@ class ign_pubsub : public rclcpp::Node
       : Node("ign_pubsub"), 
       tf_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(this)), 
       count_(0),
-    bwf_global_force_cmd_x(5.0, 0.005), // Cutoff frequency = 20 Hz, Sampling time = 0.005 s
-    bwf_global_force_cmd_y(5.0, 0.005),
-    bwf_global_force_cmd_z(5.0, 0.005)      
-    {      
+      state_filter(9, 1.0, 0.005), // FilteredVector 초기화
+      torque_measured_filter(3, 1, 0.005), // FilteredVector 초기화
+      drone_tau_measured_filter(3, 2, 0.005), // FilteredVector 초기화
+      drone_force_measured_filter(3, 2, 0.005) // FilteredVector 초기화
+    {
       // QoS 설정
       rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(10))
                                       .reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE)
@@ -48,6 +51,7 @@ class ign_pubsub : public rclcpp::Node
       wrench_publisher_ = this->create_publisher<ros_gz_interfaces::msg::EntityWrench>("/link_drone/wrench", qos_settings);
       velocity_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("/velocity_marker", qos_settings);
       state_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_vector", qos_settings);            
+      state_dot_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_dot_vector", qos_settings);            
       commanded_publsiher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/commanded_input_U", qos_settings);
       state_U_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_U", qos_settings);
 
@@ -86,9 +90,6 @@ class ign_pubsub : public rclcpp::Node
       timer_ = this->create_wall_timer(
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
-      timer_visual = this->create_wall_timer(
-      100ms, std::bind(&ign_pubsub::slower_callback, this));
-
 
     body_xyz_P.diagonal() << 20, 20, 50;
     body_xyz_I.diagonal() << 0.1, 0.1, 2;
@@ -105,17 +106,11 @@ class ign_pubsub : public rclcpp::Node
 	    void timer_callback()
     {	//main loop, 100Hz
     // 현재 시간 계산
-      set_state_FK();      
-      set_state_dot_FK();
+      set_state_and_dot();
       set_traj();
       PID_controller();		
 
       data_publish();     	    
-    }
-
-    void slower_callback()
-    {
-      tf_publish();      
     }
 
 
@@ -170,48 +165,50 @@ void set_traj()
     time_cnt++;
     double time = time_cnt * delta_time - 5;
 
-    // Joint 명령의 누적 각도를 저장할 변수 (연속성을 보장하기 위해)
-    static double joint1_accum_angle = 0.0;
-    static double joint2_accum_angle = 0.0;
-    static double joint3_accum_angle = 0.0;
-
     // 명령 생성
-    if (time <= 5.0) {
+    if (time <= 15.0) {
         // 초기 상태, 명령 없음
         global_xyz_cmd.setZero();
         joint_angle_cmd.setZero();
         global_rpy_cmd.setZero();
-    } else if (time > 5.0 && time <= 10.0) {
-        // 5초부터 10초까지 Z축으로 2미터 상승
-        global_xyz_cmd[2] = 2 * ((time - 5.0) / 5.0);
-    } else if (time > 10.0 && time <= 15.0) {
-        // 10초부터 15초까지 Joint 1이 0도에서 160도로 천천히 상승
-        joint_angle_cmd[0] = (160 * M_PI / 180) * ((time - 10.0) / 5.0); // Joint 1 각도
     } else if (time > 15.0 && time <= 20.0) {
-        // 15초부터 20초까지 고정
-        global_xyz_cmd[2] = 2.0; // Z축 고정
+        // 15초부터 20초까지 Z축으로 1.5미터 상승
+        global_xyz_cmd[2] = 1.5 * ((time - 15.0) / 5.0);
     } else if (time > 20.0 && time <= 25.0) {
-        // 20초부터 25초까지 Joint 2가 0도에서 180도로 천천히 상승
-        joint_angle_cmd[1] = (70 * M_PI / 180) * ((time - 20.0) / 5.0); // Joint 2 각도
+        // 20초부터 25초까지 대기
+        global_xyz_cmd[2] = 1.5; // Z축 고정
     } else if (time > 25.0 && time <= 30.0) {
-        // 25초부터 30초까지 Z축 고정, X축 원점 복귀
-        global_xyz_cmd[2] = 2.0; // Z축 고정
-    } else if (time > 30.0) {
-        // 30초 이후 Joint 명령을 연속적으로 sin 파형으로 설정
-        double t = time - 30.0;
-        joint1_accum_angle += delta_time * 10 * M_PI / 180 * std::cos(2 * M_PI * t / 5);
-        joint2_accum_angle += delta_time * 20 * M_PI / 180 * std::cos(2 * M_PI * t / 4);
-        joint3_accum_angle += delta_time * 10 * M_PI / 180 * std::cos(2 * M_PI * t / 3);
+        // 25초부터 30초까지 1번 조인트 90도 회전
+        global_xyz_cmd[2] = 1.5; // Z축 고정
+        joint_angle_cmd[0] = (80 * M_PI / 180) * ((time - 25.0) / 5.0); // Joint 1 선형 회전
+    } else if (time > 30.0 && time <= 35.0) {
+        // 30초부터 35초까지 대기
+        global_xyz_cmd[2] = 1.5; // Z축 고정
+        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
+    } else if (time > 35.0 && time <= 40.0) {
+        // 35초부터 40초까지 2번 조인트 80도 회전
+        global_xyz_cmd[2] = 1.5; // Z축 고정
+        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
+        joint_angle_cmd[1] = (70 * M_PI / 180) * ((time - 35.0) / 5.0); // Joint 2 선형 회전
+    } else if (time > 40.0 && time <= 45.0) {
+        // 40초부터 45초까지 대기
+        global_xyz_cmd[2] = 1.5; // Z축 고정
+        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
+        joint_angle_cmd[1] = 70 * M_PI / 180; // Joint 2 고정
+    } else if (time > 45.0 && time <= 50.0) {
+        // 45초부터 50초까지 2번 조인트 0도로 복귀, 동시에 3번 조인트 45도 상승
+        global_xyz_cmd[2] = 1.5; // Z축 고정
+        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
+        joint_angle_cmd[1] = (70 * M_PI / 180) * (1.0 - (time - 45.0) / 5.0); // Joint 2 복귀
+        joint_angle_cmd[2] = (45 * M_PI / 180) * ((time - 45.0) / 5.0); // Joint 3 상승
+    } else if (time > 50.0 && time <= 55.0) {
+        // 50초부터 55초까지 대기
+        global_xyz_cmd[2] = 1.5; // Z축 고정
+        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
+        joint_angle_cmd[1] = 0.0; // Joint 2 고정
+        joint_angle_cmd[2] = 45 * M_PI / 180; // Joint 3 고정
     }
-
-
-    joint_angle_cmd[0] = joint1_accum_angle + 10 * M_PI / 180;
-    joint_angle_cmd[1] = joint2_accum_angle + 20 * M_PI / 180;
-    joint_angle_cmd[2] = joint3_accum_angle + 10 * M_PI / 180;
 }
-
-
-
 
 
 
@@ -254,16 +251,35 @@ void data_publish()
   state_publisher_->publish(state_msg);
 
 
+
+
+  std_msgs::msg::Float64MultiArray state_dot_msg;
+  state_dot_msg.data.push_back(filtered_state_dot[0]);
+  state_dot_msg.data.push_back(filtered_state_dot[1]);
+  state_dot_msg.data.push_back(filtered_state_dot[2]);
+  state_dot_msg.data.push_back(filtered_state_dot[3]);
+  state_dot_msg.data.push_back(filtered_state_dot[4]);
+  state_dot_msg.data.push_back(filtered_state_dot[5]);
+  state_dot_msg.data.push_back(filtered_state_dot[6]);
+  state_dot_msg.data.push_back(filtered_state_dot[7]);
+  state_dot_msg.data.push_back(filtered_state_dot[8]);
+  state_dot_publisher_->publish(state_dot_msg);
+
+
+  global_force_cmd = drone_force_measured_filter.apply(global_force_cmd);
+  global_torque_cmd = drone_tau_measured_filter.apply(global_torque_cmd);
+  joint_effort_meas = torque_measured_filter.apply(joint_effort_meas);
+
   std_msgs::msg::Float64MultiArray state_U_msg;
   state_U_msg.data.push_back(global_force_cmd[0]);
   state_U_msg.data.push_back(global_force_cmd[1]);
   state_U_msg.data.push_back(global_force_cmd[2]);
+  state_U_msg.data.push_back(global_torque_cmd[0]);
+  state_U_msg.data.push_back(global_torque_cmd[1]);
+  state_U_msg.data.push_back(global_torque_cmd[2]);
   state_U_msg.data.push_back(joint_effort_meas[0]);
   state_U_msg.data.push_back(joint_effort_meas[1]);
   state_U_msg.data.push_back(joint_effort_meas[2]);
-  state_U_msg.data.push_back(bwf_global_force_cmd_x.Filter(joint_effort_meas[0]));
-  state_U_msg.data.push_back(bwf_global_force_cmd_y.Filter(joint_effort_meas[1]));
-  state_U_msg.data.push_back(bwf_global_force_cmd_z.Filter(joint_effort_meas[2]));
   state_U_publisher_->publish(state_U_msg);
 
 
@@ -354,7 +370,6 @@ void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 void joint1_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
 {
     joint_effort_meas[0] = msg->wrench.torque.z;
-        RCLCPP_WARN(this->get_logger(), "CALLBACK!!");
 }
 
 void joint2_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
@@ -369,267 +384,44 @@ void joint3_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr m
 
 
 
-void set_state_FK()
+
+
+void set_state_and_dot()
 {
- 
+
     State << global_xyz_meas[0], global_xyz_meas[1], global_xyz_meas[2], 
     global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2], 
     joint_angle_meas[0], joint_angle_meas[1], joint_angle_meas[2];
  
-    // 기본적으로 드론의 Global Frame 기준 위치 및 자세를 기반으로 변환 행렬 T_w0 계산
-    Eigen::Matrix3d R_B = get_rotation_matrix(global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2]);
-    T_w0.block<3, 3>(0, 0) = R_B;
-    T_w0.block<3, 1>(0, 3) = global_xyz_meas;
 
-    // DH 파라미터 기반의 변환 행렬 정의
-    T_01 << std::cos(joint_angle_meas[0]), 0, std::sin(joint_angle_meas[0]), 0,
-            std::sin(joint_angle_meas[0]), 0, -std::cos(joint_angle_meas[0]), 0,
-            0, 1, 0, l1,
-            0, 0, 0, 1;
-
-    T_12 << std::cos(joint_angle_meas[1]), -std::sin(joint_angle_meas[1]), 0, l2 * std::cos(joint_angle_meas[1]),
-            std::sin(joint_angle_meas[1]), std::cos(joint_angle_meas[1]), 0, l2 * std::sin(joint_angle_meas[1]),
-            0, 0, 1, 0,
-            0, 0, 0, 1;
-
-    T_23 << std::cos(joint_angle_meas[2]), -std::sin(joint_angle_meas[2]), 0, l3 * std::cos(joint_angle_meas[2]),
-            std::sin(joint_angle_meas[2]), std::cos(joint_angle_meas[2]), 0, l3 * std::sin(joint_angle_meas[2]),
-            0, 0, 1, 0,
-            0, 0, 0, 1;
-
-    // Forward Kinematics 계산
-    Eigen::Matrix4d T_w1 = T_w0 * T_01;
-    Eigen::Matrix4d T_w2 = T_w1 * T_12;
-    Eigen::Matrix4d T_w3 = T_w2 * T_23;
-
-    // 엔드 이펙터의 위치 및 자세 추출
-    Eigen::Vector3d p_E = T_w3.block<3, 1>(0, 3); // 엔드 이펙터 위치
-    Eigen::Matrix3d R_E = T_w3.block<3, 3>(0, 0); // 엔드 이펙터 자세
-
-    FK_EE_Pos[0] = p_E[0];
-    FK_EE_Pos[1] = p_E[1];
-    FK_EE_Pos[2] = p_E[2];
-
-    // Global 기준 r, p, y angle 추출
-    FK_EE_Pos[3] = std::atan2(R_E(2, 1), R_E(2, 2));
-    FK_EE_Pos[4] = std::asin(-R_E(2, 0));
-    FK_EE_Pos[5] = std::atan2(R_E(1, 0), R_E(0, 0));
-
-    // T_w1 위치 및 자세 추출
-    Eigen::Vector3d p_w1 = T_w1.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w1 = T_w1.block<3, 3>(0, 0);
-    Tw1_Pos[0] = p_w1[0];
-    Tw1_Pos[1] = p_w1[1];
-    Tw1_Pos[2] = p_w1[2];
-    Tw1_Pos[3] = std::atan2(R_w1(2, 1), R_w1(2, 2));
-    Tw1_Pos[4] = std::asin(-R_w1(2, 0));
-    Tw1_Pos[5] = std::atan2(R_w1(1, 0), R_w1(0, 0));
-
-    // T_w2 위치 및 자세 추출
-    Eigen::Vector3d p_w2 = T_w2.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w2 = T_w2.block<3, 3>(0, 0);
-    Tw2_Pos[0] = p_w2[0];
-    Tw2_Pos[1] = p_w2[1];
-    Tw2_Pos[2] = p_w2[2];
-    Tw2_Pos[3] = std::atan2(R_w2(2, 1), R_w2(2, 2));
-    Tw2_Pos[4] = std::asin(-R_w2(2, 0));
-    Tw2_Pos[5] = std::atan2(R_w2(1, 0), R_w2(0, 0));
-
-    // T_w3 위치 및 자세 추출
-    Eigen::Vector3d p_w3 = T_w3.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w3 = T_w3.block<3, 3>(0, 0);
-    Tw3_Pos[0] = p_w3[0];
-    Tw3_Pos[1] = p_w3[1];
-    Tw3_Pos[2] = p_w3[2];
-    Tw3_Pos[3] = std::atan2(R_w3(2, 1), R_w3(2, 2));
-    Tw3_Pos[4] = std::asin(-R_w3(2, 0));
-    Tw3_Pos[5] = std::atan2(R_w3(1, 0), R_w3(0, 0));
-    // State 벡터 출력 (디버깅용)
-    // std::cout << "State: \n" << State_dot << std::endl;
-
-
-    // T_01의 위치 벡터 및 자세 추출
-    Eigen::Vector3d p_01 = T_01.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_01 = T_01.block<3, 3>(0, 0);
-    T01_Pos[0] = p_01[0];
-    T01_Pos[1] = p_01[1];
-    T01_Pos[2] = p_01[2];
-
-    T01_Pos[3] = std::atan2(R_01(2, 1), R_01(2, 2));
-    T01_Pos[4] = std::asin(-R_01(2, 0));
-    T01_Pos[5] = std::atan2(R_01(1, 0), R_01(0, 0));
-
-    // T_12의 위치 벡터 및 자세 추출
-    Eigen::Vector3d p_12 = T_12.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_12 = T_12.block<3, 3>(0, 0);
-    T12_Pos[0] = p_12[0];
-    T12_Pos[1] = p_12[1];
-    T12_Pos[2] = p_12[2];    
-    
-    T12_Pos[3] = std::atan2(R_12(2, 1), R_12(2, 2));
-    T12_Pos[4] = std::asin(-R_12(2, 0));
-    T12_Pos[5] = std::atan2(R_12(1, 0), R_12(0, 0));
-
-    // T_23의 위치 벡터 및 자세 추출
-    Eigen::Vector3d p_23 = T_23.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_23 = T_23.block<3, 3>(0, 0);
-    T23_Pos[0] = p_23[0];
-    T23_Pos[1] = p_23[1];
-    T23_Pos[2] = p_23[2];    
-
-    T23_Pos[3] = std::atan2(R_23(2, 1), R_23(2, 2));
-    T23_Pos[4] = std::asin(-R_23(2, 0));
-    T23_Pos[5] = std::atan2(R_23(1, 0), R_23(0, 0));
-
-}
-
-
-void set_state_dot_FK()
-{
-    // 수치미분 계산
+    // // 수치미분 계산
     Eigen::VectorXd raw_State_dot = (State - State_prev) / delta_time;
     State_prev = State;
 
-    // Low Pass Filter를 적용하기 위한 파라미터 계산
-    double cutoff_freq = 40.0; // Hz
-    double alpha = 1.0 / (1.0 + (1.0 / (2.0 * M_PI * cutoff_freq * delta_time)));
+    // Roll, Pitch, Yaw 변화율 (raw_State_dot[3], raw_State_dot[4], raw_State_dot[5])
+    double roll = State[3];
+    double pitch = State[4];
+    double roll_dot = raw_State_dot[3];
+    double pitch_dot = raw_State_dot[4];
+    double yaw_dot = raw_State_dot[5];
 
-    // 필터 적용
-    for (int i = 0; i < State_dot.size(); i++) {
-        State_dot[i] = alpha * raw_State_dot[i] + (1.0 - alpha) * State_dot[i];
-    }
+    // 변환 행렬 T(r, p) 생성
+    Eigen::Matrix3d T;
+    T << 1, 0, -sin(pitch),
+         0, cos(roll), cos(pitch) * sin(roll),
+         0, -sin(roll), cos(pitch) * cos(roll);
 
-    // 외부에서 측정한 속도값 적용 (필터를 사용하지 않음)
-    State_dot[3] = global_rpy_vel_meas[0];
-    State_dot[4] = global_rpy_vel_meas[1];
-    State_dot[5] = global_rpy_vel_meas[2];
-    State_dot[6] = joint_angle_dot_meas[0];
-    State_dot[7] = joint_angle_dot_meas[1];
-    State_dot[8] = joint_angle_dot_meas[2];
-}
+    // 각속도 계산
+    Eigen::Vector3d euler_rate(roll_dot, pitch_dot, yaw_dot); // Euler 각 변화율
+    Eigen::Vector3d angular_velocity = T * euler_rate;       // 각속도 (wx, wy, wz)
 
-
-
-void tf_publish()
-{
-  //TODO 1: Drone TF Publish
-  //global_xyz_meas[0], global_xyz_meas[1], global_xyz_meas[2], 
-  //global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2], 
-
-  //TODO 2: End Effector TF Publish
-  //FK_EE_Pos[0], FK_EE_Pos[1], FK_EE_Pos[2],
-  //FK_EE_Pos[3], FK_EE_Pos[4], FK_EE_Pos[5],
+    // raw_State_dot의 각속도 값 수정
+    raw_State_dot[3] = angular_velocity[0]; // wx
+    raw_State_dot[4] = angular_velocity[1]; // wy
+    raw_State_dot[5] = angular_velocity[2]; // wz
 
 
-  //TODO 1: End Effector TF Publish
-        geometry_msgs::msg::TransformStamped transform_EE;
-        transform_EE.header.stamp = this->get_clock()->now();
-        transform_EE.header.frame_id = "world"; // Parent frame
-        transform_EE.child_frame_id = "tf/EE_FK";  // Child frame
-
-        transform_EE.transform.translation.x = FK_EE_Pos[0];
-        transform_EE.transform.translation.y = FK_EE_Pos[1];
-        transform_EE.transform.translation.z = FK_EE_Pos[2];
-
-        // Convert roll, pitch, yaw to quaternion
-        tf2::Quaternion q_EE;
-        q_EE.setRPY(FK_EE_Pos[3], FK_EE_Pos[4], FK_EE_Pos[5]);
-        transform_EE.transform.rotation.x = q_EE.x();
-        transform_EE.transform.rotation.y = q_EE.y();
-        transform_EE.transform.rotation.z = q_EE.z();
-        transform_EE.transform.rotation.w = q_EE.w();
-
-        // Broadcast the transform
-        tf_broadcaster_->sendTransform(transform_EE);
-
-
-  //TODO 2: Drone TF Publish
-        geometry_msgs::msg::TransformStamped transform_drone;
-        transform_drone.header.stamp = this->get_clock()->now();
-        transform_drone.header.frame_id = "world"; // Parent frame
-        transform_drone.child_frame_id = "link_drone";  // Child frame
-
-        transform_drone.transform.translation.x = global_xyz_meas[0];
-        transform_drone.transform.translation.y = global_xyz_meas[1];
-        transform_drone.transform.translation.z = global_xyz_meas[2];
-
-        // Convert roll, pitch, yaw to quaternion
-        tf2::Quaternion q_drone;
-        q_drone.setRPY(global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2]);
-        transform_drone.transform.rotation.x = q_drone.x();
-        transform_drone.transform.rotation.y = q_drone.y();
-        transform_drone.transform.rotation.z = q_drone.z();
-        transform_drone.transform.rotation.w = q_drone.w();
-
-        // Broadcast the transform
-        tf_broadcaster_->sendTransform(transform_drone);
-
-
-
-  //Tw1 Pub
-        geometry_msgs::msg::TransformStamped transform_T01;
-        transform_T01.header.stamp = this->get_clock()->now();
-        transform_T01.header.frame_id = "link_drone"; // Parent frame
-        transform_T01.child_frame_id = "link_1";  // Child frame
-
-        transform_T01.transform.translation.x = 0;
-        transform_T01.transform.translation.y = 0;
-        transform_T01.transform.translation.z = 0.2;
-
-        // Convert roll, pitch, yaw to quaternion
-        tf2::Quaternion q_T01;
-        q_T01.setRPY(0, 0, joint_angle_cmd[0]);
-        transform_T01.transform.rotation.x = q_T01.x();
-        transform_T01.transform.rotation.y = q_T01.y();
-        transform_T01.transform.rotation.z = q_T01.z();
-        transform_T01.transform.rotation.w = q_T01.w();
-
-        // Broadcast the transform
-        tf_broadcaster_->sendTransform(transform_T01);
-
-
-  //Tw2 Pub
-        geometry_msgs::msg::TransformStamped transform_T12;
-        transform_T12.header.stamp = this->get_clock()->now();
-        transform_T12.header.frame_id = "link_1"; // Parent frame
-        transform_T12.child_frame_id = "link_2";  // Child frame
-
-        transform_T12.transform.translation.x = 0;
-        transform_T12.transform.translation.y = 0.0;
-        transform_T12.transform.translation.z = 0.05;
-
-        // Convert roll, pitch, yaw to quaternion
-        tf2::Quaternion q_T12;
-        q_T12.setRPY(M_PI / 2, -joint_angle_cmd[1], 0);
-        transform_T12.transform.rotation.x = q_T12.x();
-        transform_T12.transform.rotation.y = q_T12.y();
-        transform_T12.transform.rotation.z = q_T12.z();
-        transform_T12.transform.rotation.w = q_T12.w();
-
-        // Broadcast the transform
-        tf_broadcaster_->sendTransform(transform_T12);
-
-
-  //Tw3 Pub
-        geometry_msgs::msg::TransformStamped transform_T23;
-        transform_T23.header.stamp = this->get_clock()->now();
-        transform_T23.header.frame_id = "link_2"; // Parent frame
-        transform_T23.child_frame_id = "link_3";  // Child frame
-
-        transform_T23.transform.translation.x = 0.2;
-        transform_T23.transform.translation.y = 0;
-        transform_T23.transform.translation.z = 0;
-
-        // Convert roll, pitch, yaw to quaternion
-        tf2::Quaternion q_T23;
-        q_T23.setRPY(0, 0, joint_angle_cmd[2]);
-        transform_T23.transform.rotation.x = q_T23.x();
-        transform_T23.transform.rotation.y = q_T23.y();
-        transform_T23.transform.rotation.z = q_T23.z();
-        transform_T23.transform.rotation.w = q_T23.w();
-
-        // Broadcast the transform
-        tf_broadcaster_->sendTransform(transform_T23);
+    filtered_state_dot = state_filter.apply(raw_State_dot);
 
 }
 
@@ -648,6 +440,7 @@ void tf_publish()
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pitch_axis_publisher_;           
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr yaw_axis_publisher_;    
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_dot_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_U_publisher_;
   rclcpp::Publisher<ros_gz_interfaces::msg::EntityWrench>::SharedPtr wrench_publisher_;    
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_; 
@@ -717,7 +510,11 @@ void tf_publish()
   Eigen::VectorXd State = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_prev = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_dot = Eigen::VectorXd::Zero(9);
-    
+  Eigen::VectorXd State_quat = Eigen::VectorXd::Zero(10);
+  Eigen::VectorXd State_quat_prev = Eigen::VectorXd::Zero(10);
+  Eigen::VectorXd filtered_state_dot = Eigen::VectorXd::Zero(9);
+
+
   Eigen::VectorXd FK_EE_Pos = Eigen::VectorXd::Zero(6);
   Eigen::VectorXd Tw1_Pos = Eigen::VectorXd::Zero(6);
   Eigen::VectorXd Tw2_Pos = Eigen::VectorXd::Zero(6);
@@ -732,12 +529,6 @@ void tf_publish()
   Eigen::VectorXd T23_Pos = Eigen::VectorXd::Zero(6);
 
 
-
-    ButterworthFilter bwf_global_force_cmd_x;
-    ButterworthFilter bwf_global_force_cmd_y;
-    ButterworthFilter bwf_global_force_cmd_z;
-
-
     double time;
     double time_cnt;
     double sine;
@@ -747,6 +538,13 @@ void tf_publish()
     double l1 = 0.1;
     double l2 = 0.2;
     double l3 = 0.2;
+
+
+
+  FilteredVector state_filter;
+  FilteredVector torque_measured_filter;
+  FilteredVector drone_tau_measured_filter;
+  FilteredVector drone_force_measured_filter;
 };
 
 int main(int argc, char * argv[])

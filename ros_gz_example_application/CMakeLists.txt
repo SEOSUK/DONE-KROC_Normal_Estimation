@@ -25,7 +25,7 @@ find_package(Eigen3 REQUIRED)  # Add Eigen3
 
 
 #IGNPUBSUB
-add_executable(ign_pubsub src/ign_pubsub.cpp)
+add_executable(ign_pubsub src/ign_pubsub.cpp src/ButterworthFilter.cpp)
 ament_target_dependencies(ign_pubsub
  rclcpp 
  std_msgs 
@@ -48,6 +48,33 @@ install(TARGETS
 )
 
 target_link_libraries(ign_pubsub ButterworthFilter)
+
+
+#SEDAS_RVIZ
+add_executable(sedas_rviz src/sedas_rviz.cpp)
+ament_target_dependencies(sedas_rviz
+ rclcpp 
+ std_msgs 
+ sensor_msgs 
+ ros_gz_interfaces 
+ geometry_msgs 
+ tf2 
+ tf2_ros 
+ visualization_msgs)
+
+install(TARGETS
+sedas_rviz
+  DESTINATION lib/${PROJECT_NAME})
+
+
+ target_include_directories(sedas_rviz PUBLIC
+ $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+ $<INSTALL_INTERFACE:include>
+ ${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
+)
+
+target_link_libraries(sedas_rviz)
+
 
 #PINOCCHIOTRY
 add_executable(pinocchio_try src/pinocchio_try.cpp)
