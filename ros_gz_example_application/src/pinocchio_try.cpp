@@ -169,9 +169,9 @@ void timerCallback() {
         ss_g << G;
         ss_state << "\n" << state;
         ss_m << "\n" << M;
-        RCLCPP_INFO(this->get_logger(), "State vector: %s \n", ss_state.str().c_str());
-        RCLCPP_INFO(this->get_logger(), "Gravity vector:\n %s \n", ss_g.str().c_str());
-        RCLCPP_INFO(this->get_logger(), "Mass matrix M: %s \n", ss_m.str().c_str());
+        // RCLCPP_INFO(this->get_logger(), "State vector: %s \n", ss_state.str().c_str());
+        // RCLCPP_INFO(this->get_logger(), "Gravity vector:\n %s \n", ss_g.str().c_str());
+        // RCLCPP_INFO(this->get_logger(), "Mass matrix M: %s \n", ss_m.str().c_str());
 
 
         std_msgs::msg::Float64MultiArray gravity_msg;
@@ -190,12 +190,12 @@ void timerCallback() {
         Eigen::Vector3d position = ee_pose.translation(); // 위치
         Eigen::Matrix3d orientation = ee_pose.rotation(); // 자세 (회전 행렬)
 
-        RCLCPP_INFO(this->get_logger(), "End effector position: [%f, %f, %f]",
-                    position[0], position[1], position[2]);
-        RCLCPP_INFO(this->get_logger(), "End effector orientation:\n[%f, %f, %f]\n[%f, %f, %f]\n[%f, %f, %f]",
-                    orientation(0, 0), orientation(0, 1), orientation(0, 2),
-                    orientation(1, 0), orientation(1, 1), orientation(1, 2),
-                    orientation(2, 0), orientation(2, 1), orientation(2, 2));
+        // RCLCPP_INFO(this->get_logger(), "End effector position: [%f, %f, %f]",
+        //             position[0], position[1], position[2]);
+        // RCLCPP_INFO(this->get_logger(), "End effector orientation:\n[%f, %f, %f]\n[%f, %f, %f]\n[%f, %f, %f]",
+        //             orientation(0, 0), orientation(0, 1), orientation(0, 2),
+        //             orientation(1, 0), orientation(1, 1), orientation(1, 2),
+        //             orientation(2, 0), orientation(2, 1), orientation(2, 2));
 
     //Publisher 만들어서 교차검증하자
         std_msgs::msg::Float64MultiArray position_msg;
@@ -231,10 +231,10 @@ void timerCallback() {
         }
 
 
-        RCLCPP_INFO(this->get_logger(), "State_DOT: [%f, %f, %f] [%f, %f, %f]",
-                    state_dot[0], state_dot[1], state_dot[2],
-                    state_dot[3], state_dot[4], state_dot[5]
-                    );
+        // RCLCPP_INFO(this->get_logger(), "State_DOT: [%f, %f, %f] [%f, %f, %f]",
+        //             state_dot[0], state_dot[1], state_dot[2],
+        //             state_dot[3], state_dot[4], state_dot[5]
+        //             );
 
     }
 

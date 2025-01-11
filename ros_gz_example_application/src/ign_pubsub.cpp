@@ -84,6 +84,11 @@ class ign_pubsub : public rclcpp::Node
           "/force_torque_joint3", 10,  // Topic name and QoS depth
           std::bind(&ign_pubsub::joint3_torque_Callback, this, std::placeholders::_1));
 
+      // Joint 4 Subscriber
+      joint_EE_torque_subscriber_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
+          "/force_torque_EE", 10,  // Topic name and QoS depth
+          std::bind(&ign_pubsub::jointEE_torque_Callback, this, std::placeholders::_1));
+
 
 
 
@@ -208,6 +213,14 @@ void set_traj()
         joint_angle_cmd[1] = 0.0; // Joint 2 고정
         joint_angle_cmd[2] = 45 * M_PI / 180; // Joint 3 고정
     }
+
+
+  if (time > 20)
+  {
+    global_xyz_cmd[0] = 0.1 * time - 2;
+  }
+
+
 }
 
 
@@ -382,6 +395,12 @@ void joint3_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr m
     joint_effort_meas[2] = msg->wrench.torque.z;
 }
 
+void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
+{
+    joint_effort_meas[3] = msg->wrench.force.z;
+    RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf]", joint_effort_meas[3]);    
+}
+
 
 
 
@@ -447,6 +466,7 @@ void set_state_and_dot()
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_1_torque_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_2_torque_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_3_torque_subscriber_;
+  rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_EE_torque_subscriber_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr link_yaw_imu_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr position_subscriber_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr velocity_publisher_;
@@ -506,7 +526,7 @@ void set_state_and_dot()
   Eigen::Vector3d joint_angle_cmd;
   Eigen::Vector3d joint_angle_meas;
   Eigen::Vector3d joint_angle_dot_meas;  
-  Eigen::Vector3d joint_effort_meas;
+  Eigen::VectorXd joint_effort_meas = Eigen::VectorXd::Zero(4);
   Eigen::VectorXd State = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_prev = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_dot = Eigen::VectorXd::Zero(9);

@@ -124,5 +124,51 @@
       </plugin>      
     </model>
 
+
+<model name="ice_wall">
+  <static>true</static>
+  <pose>10 0 0 0.785 -0.785 0.785</pose> <!-- 위치: X=3, Y=0, Z=1 -->
+  <link name="ice_wall_link">
+    <collision name="ice_wall_collision">
+      <geometry>
+        <box>
+          <size>0.1 15 5</size> <!-- 크기: X=6, Y=0.1, Z=2 -->
+        </box>
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.05</mu>          <!-- 정지 마찰 계수 (매우 낮음) -->
+            <mu2>0.05</mu2>        <!-- 슬라이딩 마찰 계수 (매우 낮음) -->
+          </ode>
+        </friction>
+        <contact>
+          <ode>
+            <kp>1000.0</kp>       <!-- 스프링 상수 -->
+            <kd>1.0</kd>          <!-- 감쇠 상수 -->
+          </ode>
+        </contact>
+      </surface>
+    </collision>
+    <visual name="ice_wall_visual">
+      <geometry>
+        <box>
+          <size>0.1 15 5</size> <!-- 크기: X=6, Y=0.1, Z=2 -->
+        </box>
+      </geometry>
+      <material>
+        <ambient>0.6 0.8 1.0 0.7</ambient> <!-- 밝은 파란색, 살짝 투명 -->
+        <diffuse>0.6 0.8 1.0 0.7</diffuse> <!-- 밝은 파란색, 살짝 투명 -->
+        <specular>0.8 0.9 1.0 1.0</specular> <!-- 반짝임 -->
+      </material>
+
+    </visual>
+  </link>
+</model>
+
+
+
+
+
   </world>
 </sdf>
