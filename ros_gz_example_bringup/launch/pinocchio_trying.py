@@ -51,25 +51,7 @@ def generate_launch_description():
         ])}.items(),
     )
 
-    # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
-    robot_state_publisher = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        name='robot_state_publisher',
-        output='both',
-        parameters=[
-            {'use_sim_time': True},
-            {'robot_description': robot_desc},
-        ]
-    )
 
-    # Visualize in RViz
-    rviz = Node(
-       package='rviz2',
-       executable='rviz2',
-       arguments=['-d', os.path.join(pkg_project_bringup, 'config', 'manipulator.rviz')],
-       condition=IfCondition(LaunchConfiguration('rviz'))
-    )
 
     # Bridge ROS topics and Gazebo messages for establishing communication
     bridge = Node(
@@ -110,15 +92,22 @@ def generate_launch_description():
         name='sedas_rviz',
         output='screen',
     )
+    
+    # Custom Node: sedas_traj
+    traj_node = Node(
+        package='ros_gz_example_application',
+        executable='sedas_traj',
+        name='sedas_traj',
+        output='screen',
+    )    
 
     return LaunchDescription([
         gz_sim,
         DeclareLaunchArgument('rviz', default_value='true',
                               description='Open RViz.'),
         bridge,
-        robot_state_publisher,
-        #rviz,
         ign_pubsub_node,  # 추가된 ign_pubsub 노드  
 	pinocchio_node,
-	sedas_rviz_node
+	sedas_rviz_node,
+	traj_node	
     ])

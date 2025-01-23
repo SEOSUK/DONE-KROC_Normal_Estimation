@@ -70,7 +70,7 @@ target_include_directories(
 
 target_link_libraries(ForceTorquePlugin PRIVATE
   ignition-gazebo${GZ_SIM_VER}::ignition-gazebo${GZ_SIM_VER})
-
+  
 
 # Following 'install' directive ensures that the compiled libraries
 # of the 'BasicSystem' and 'FullSystem' targets will be copied

@@ -56,9 +56,22 @@ class sedas_rviz : public rclcpp::Node
           "/pinnochio/EE_pos", qos_settings,
           std::bind(&sedas_rviz::EE_pos_callback, this, std::placeholders::_1)); 
 
-      marker_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>(
-    "/visualization_marker", 10);
+      FK_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
+    "/manipulator/FK", 10);
 
+      // Joint EE Subscriber
+      joint_EE_torque_subscriber_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
+          "/force_torque_EE", 10,  // Topic name and QoS depth
+          std::bind(&sedas_rviz::jointEE_torque_Callback, this, std::placeholders::_1));
+
+
+
+
+      EE_Vel_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>(
+    "/EE_Vel_marker", 10);
+
+      EE_Force_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>(
+    "/EE_Force_marker", 10);    
 
       timer_ = this->create_wall_timer(
       10ms, std::bind(&sedas_rviz::timer_callback, this));
@@ -74,7 +87,22 @@ class sedas_rviz : public rclcpp::Node
     // 현재 시간 계산
       Calc_FK();
       Robot_State_Publisher();
-      End_Effector_Pos_Vel_Publisher();      
+      // End_Effector_Pos_Vel_Publisher();      
+  End_Effector_Force_Publisher();
+      data_publisher();
+    }
+
+    void data_publisher()
+    {
+      std_msgs::msg::Float64MultiArray FK_meas;
+    FK_meas.data.push_back(Tw3_Pos[0]);
+    FK_meas.data.push_back(Tw3_Pos[1]);
+    FK_meas.data.push_back(Tw3_Pos[2]);
+    FK_meas.data.push_back(Tw3_Pos[3]);
+    FK_meas.data.push_back(Tw3_Pos[4]);
+    FK_meas.data.push_back(Tw3_Pos[5]);
+
+    FK_publisher_->publish(FK_meas);
     }
 
     void Calc_FK()
@@ -334,10 +362,48 @@ class sedas_rviz : public rclcpp::Node
     marker.color.b = 0.0;
 
     // 퍼블리시
-    marker_publisher_->publish(marker);
+    EE_Vel_publisher_->publish(marker);
 
   }
 
+
+  void End_Effector_Force_Publisher()
+  {
+    // Rviz에서 시각화할 Marker 메시지 생성
+    auto marker = visualization_msgs::msg::Marker();
+    marker.header.frame_id = "world";
+    marker.header.stamp = this->get_clock()->now();
+    marker.ns = "EE_Force";
+    marker.id = 0;
+    marker.type = visualization_msgs::msg::Marker::ARROW;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+
+    // 화살표의 시작점과 끝점 설정
+    geometry_msgs::msg::Point start_point, end_point;
+    start_point.x = FK_EE_Pos[0]; // 현재 위치
+    start_point.y = FK_EE_Pos[1];
+    start_point.z = FK_EE_Pos[2];
+
+    end_point.x = start_point.x + External_force_sensor_meas_global[0]; // 속도 벡터 방향
+    end_point.y = start_point.y + External_force_sensor_meas_global[1];
+    end_point.z = start_point.z + External_force_sensor_meas_global[2];
+
+    marker.points.push_back(start_point);
+    marker.points.push_back(end_point);
+
+    // 화살표의 색상 및 크기 설정
+    marker.scale.x = 0.02; // 화살표의 줄기 두께
+    marker.scale.y = 0.05; // 화살표의 머리 크기
+    marker.scale.z = 0.05;
+
+    marker.color.a = 1.0; // 불투명도
+    marker.color.r = 1.0; // 빨간색 (속도)
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+
+    // 퍼블리시
+    EE_Force_publisher_->publish(marker);
+  }
 
 void data_publish()
 {	// publish!!
@@ -424,10 +490,6 @@ void EE_vel_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
     EE_ang_vel[0] = msg->data[3];
     EE_ang_vel[1] = msg->data[4];
     EE_ang_vel[2] = msg->data[5];
-
-    EE_lin_vel_global = Rot_D2G(EE_lin_vel, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
-
-
 }
 
 void EE_pos_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
@@ -456,6 +518,17 @@ void joint3_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr m
 }
 
 
+void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
+{
+    External_force_sensor_meas[0] = msg->wrench.force.x;
+    External_force_sensor_meas[1] = msg->wrench.force.y;
+    External_force_sensor_meas[2] = msg->wrench.force.z;
+    // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);    
+
+    External_force_sensor_meas_global = Rot_D2G(External_force_sensor_meas, EE_ang_pos[0], EE_ang_pos[1], EE_ang_pos[2]);
+}
+
+
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::TimerBase::SharedPtr timer_visual;
 
@@ -466,9 +539,11 @@ void joint3_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr m
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr position_subscriber_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_vel_subscriber_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_pos_subscriber_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr marker_publisher_;
+  rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_EE_torque_subscriber_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr FK_publisher_;
 
-
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Vel_publisher_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Force_publisher_;
 
 
 
@@ -521,7 +596,9 @@ void joint3_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr m
   Eigen::VectorXd quat_meas = Eigen::VectorXd::Zero(4);
 
 
-  
+  Eigen::VectorXd External_force_sensor_meas = Eigen::VectorXd::Zero(3);
+  Eigen::VectorXd External_force_sensor_meas_global = Eigen::VectorXd::Zero(3);
+
 
 
   Eigen::Vector3d joint_angle_cmd;
@@ -534,6 +611,7 @@ void joint3_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr m
   Eigen::VectorXd State_quat = Eigen::VectorXd::Zero(10);
   Eigen::VectorXd State_quat_prev = Eigen::VectorXd::Zero(10);
   Eigen::VectorXd filtered_state_dot = Eigen::VectorXd::Zero(9);
+  Eigen::VectorXd FK_meas = Eigen::VectorXd::Zero(6);
 
 
   Eigen::VectorXd FK_EE_Pos = Eigen::VectorXd::Zero(6);

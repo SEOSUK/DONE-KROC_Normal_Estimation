@@ -77,7 +77,8 @@
         "any": "cpp",
         "specialfunctions": "cpp",
         "dense": "cpp",
-        "*.txx": "cpp"
+        "*.txx": "cpp",
+        "fstream": "cpp"
     },
     "python.autoComplete.extraPaths": [
         "/home/mrlseuk/ros2_ws/install/turtle_demo_controller/lib/python3.10/site-packages",

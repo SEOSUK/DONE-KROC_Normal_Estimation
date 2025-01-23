@@ -321,15 +321,17 @@
                     </cylinder>
                 </geometry>
             </collision>
-
         </link>
         <!-- Joint 3 -->
         <joint name="joint_EE" type="fixed">
-            <pose relative_to="link_3">0 0 0.1 0 0 0</pose>
+            <pose relative_to="joint_3">0.2 0 0 0 0 0</pose>
             <parent>link_3</parent>
             <child>link_EE</child>
+            <axis>
+                <xyz>0 0 1</xyz>
+            </axis>
                 <!-- Force/Torque Sensor -->
-            <sensor name="force_torque_joint3_sensor" type="force_torque">
+            <sensor name="force_torque_EE_sensor" type="force_torque">
                 <update_rate>300</update_rate>
                 <always_on>true</always_on>
                 <visualize>true</visualize>
@@ -342,22 +344,36 @@
         </joint>
         
         <link name="link_EE">
-            <pose relative_to="link_3">0 0 0.1 0 0 0</pose>
+            <pose relative_to="joint_3">0.2 0 0 0 0 0</pose>
+            <inertial>
+                <mass>0.0</mass>
+                <inertia>
+		    <ixx>0.000</ixx>
+		    <iyy>0.000</iyy>
+		    <izz>0.000</izz>
+                </inertia>
+            </inertial>
             <visual name="visual_end_effector">
-            <pose relative_to="link_3">0 0 0.1 0 0 0</pose>
+            <pose relative_to="joint_3">0.2 0 0 0 0 0</pose>
                 <geometry>
-                    <box>
-                        <size>0.06 0.06 0.02</size>
-                    </box>
+                    <sphere>
+                        <radius>0.03</radius>
+                    </sphere>
                 </geometry>
                 <material>
                     <ambient>1.0 1.0 1.0 1.0</ambient>
                     <diffuse>1.0 1.0 1.0 1.0</diffuse>
                 </material>
             </visual>
+            <collision name="collision_end_effector">
+            <pose relative_to="joint_3">0.2 0 0 0 0 0</pose>
+                <geometry>
+                    <sphere>
+                        <radius>0.03</radius>
+                    </sphere>
+                </geometry>
+            </collision>
         </link>
-        
-        
     </model>
 
 </sdf>

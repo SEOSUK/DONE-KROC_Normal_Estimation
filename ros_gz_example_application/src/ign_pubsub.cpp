@@ -84,10 +84,25 @@ class ign_pubsub : public rclcpp::Node
           "/force_torque_joint3", 10,  // Topic name and QoS depth
           std::bind(&ign_pubsub::joint3_torque_Callback, this, std::placeholders::_1));
 
-      // Joint 4 Subscriber
+      // Joint EE Subscriber
       joint_EE_torque_subscriber_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
           "/force_torque_EE", 10,  // Topic name and QoS depth
           std::bind(&ign_pubsub::jointEE_torque_Callback, this, std::placeholders::_1));
+
+      // Pinocchio Gravity Subscriber
+      pinocchio_gravity_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+          "/pinnochio/gravity", 10,  // Topic name and QoS depth
+          std::bind(&ign_pubsub::pinocchio_gravity_Callback, this, std::placeholders::_1));
+
+      // FK Subscriber
+      FK_meas_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+          "/manipulator/FK", 10,  // Topic name and QoS depth
+          std::bind(&ign_pubsub::FK_Callback, this, std::placeholders::_1));
+
+
+      drone_cmd_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+          "/manipulator/drone_cmd", 10,  // Topic name and QoS depth
+          std::bind(&ign_pubsub::drone_cmd_Callback, this, std::placeholders::_1));
 
 
 
@@ -96,11 +111,11 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 20, 20, 50;
+    body_xyz_P.diagonal() << 40, 40, 50;
     body_xyz_I.diagonal() << 0.1, 0.1, 2;
     body_xyz_D.diagonal() << 1, 1, 5;
-    body_rpy_P.diagonal() << 20, 20, 5;
-    body_rpy_D.diagonal() << 3, 3, 0.5;
+    body_rpy_P.diagonal() << 10, 10, 3;
+    body_rpy_D.diagonal() << 0.3, 0.3, 0.2;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -114,8 +129,8 @@ class ign_pubsub : public rclcpp::Node
       set_state_and_dot();
       set_traj();
       PID_controller();		
-
       data_publish();     	    
+
     }
 
 
@@ -166,64 +181,14 @@ void PID_controller()
 
 void set_traj()
 {
-    // 시간 증가 (100Hz 기준, 매 호출마다 0.01초 증가)
-    time_cnt++;
-    double time = time_cnt * delta_time - 5;
-
-    // 명령 생성
-    if (time <= 15.0) {
-        // 초기 상태, 명령 없음
-        global_xyz_cmd.setZero();
-        joint_angle_cmd.setZero();
-        global_rpy_cmd.setZero();
-    } else if (time > 15.0 && time <= 20.0) {
-        // 15초부터 20초까지 Z축으로 1.5미터 상승
-        global_xyz_cmd[2] = 1.5 * ((time - 15.0) / 5.0);
-    } else if (time > 20.0 && time <= 25.0) {
-        // 20초부터 25초까지 대기
-        global_xyz_cmd[2] = 1.5; // Z축 고정
-    } else if (time > 25.0 && time <= 30.0) {
-        // 25초부터 30초까지 1번 조인트 90도 회전
-        global_xyz_cmd[2] = 1.5; // Z축 고정
-        joint_angle_cmd[0] = (80 * M_PI / 180) * ((time - 25.0) / 5.0); // Joint 1 선형 회전
-    } else if (time > 30.0 && time <= 35.0) {
-        // 30초부터 35초까지 대기
-        global_xyz_cmd[2] = 1.5; // Z축 고정
-        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
-    } else if (time > 35.0 && time <= 40.0) {
-        // 35초부터 40초까지 2번 조인트 80도 회전
-        global_xyz_cmd[2] = 1.5; // Z축 고정
-        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
-        joint_angle_cmd[1] = (70 * M_PI / 180) * ((time - 35.0) / 5.0); // Joint 2 선형 회전
-    } else if (time > 40.0 && time <= 45.0) {
-        // 40초부터 45초까지 대기
-        global_xyz_cmd[2] = 1.5; // Z축 고정
-        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
-        joint_angle_cmd[1] = 70 * M_PI / 180; // Joint 2 고정
-    } else if (time > 45.0 && time <= 50.0) {
-        // 45초부터 50초까지 2번 조인트 0도로 복귀, 동시에 3번 조인트 45도 상승
-        global_xyz_cmd[2] = 1.5; // Z축 고정
-        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
-        joint_angle_cmd[1] = (70 * M_PI / 180) * (1.0 - (time - 45.0) / 5.0); // Joint 2 복귀
-        joint_angle_cmd[2] = (45 * M_PI / 180) * ((time - 45.0) / 5.0); // Joint 3 상승
-    } else if (time > 50.0 && time <= 55.0) {
-        // 50초부터 55초까지 대기
-        global_xyz_cmd[2] = 1.5; // Z축 고정
-        joint_angle_cmd[0] = 80 * M_PI / 180; // Joint 1 고정
-        joint_angle_cmd[1] = 0.0; // Joint 2 고정
-        joint_angle_cmd[2] = 45 * M_PI / 180; // Joint 3 고정
-    }
-
-
-  if (time > 20)
-  {
-    global_xyz_cmd[0] = 0.1 * time - 2;
-  }
-
+  
+    joint_angle_cmd[0] = 0; // Joint 1 고정
+    joint_angle_cmd[1] = M_PI / 6; // Joint 2 고정
+    joint_angle_cmd[2] = M_PI / 6; // Joint 3 고정
+  RCLCPP_ERROR(this->get_logger(), "drone cmd pos: [%lf] [%lf] [%lf]",
+                        global_xyz_cmd[0], global_xyz_cmd[1], global_xyz_cmd[2]);
 
 }
-
-
 
 
 
@@ -373,7 +338,7 @@ void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
     }
     else
     {
-        RCLCPP_WARN(this->get_logger(), "link_yaw id (17) is out of bounds in PoseArray.");
+        RCLCPP_WARN(this->get_logger(), "link_yaw id (1) is out of bounds in PoseArray.");
     }
 
 
@@ -397,12 +362,37 @@ void joint3_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr m
 
 void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
 {
-    joint_effort_meas[3] = msg->wrench.force.z;
-    RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf]", joint_effort_meas[3]);    
+    External_force_sensor_meas[0] = msg->wrench.force.x;
+    External_force_sensor_meas[1] = msg->wrench.force.y;
+    External_force_sensor_meas[2] = msg->wrench.force.z;
+    // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);    
 }
 
+void pinocchio_gravity_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+{
 
+  for (int i = 0; i < 9; i++)
+  {
+    pinocchio_gravity[i] = msg->data[i];
+  }
 
+}
+
+void FK_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+{
+  for (int i = 0; i<6; i++)
+  {
+  FK_meas[i] = msg->data[i];
+  }
+}
+
+void drone_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+{
+  for (int i = 0; i<3; i++)
+  {
+  global_xyz_cmd[i] = msg->data[i];
+  }
+}
 
 
 void set_state_and_dot()
@@ -467,10 +457,13 @@ void set_state_and_dot()
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_2_torque_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_3_torque_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_EE_torque_subscriber_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr pinocchio_gravity_subscriber_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr link_yaw_imu_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr position_subscriber_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr velocity_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr commanded_publsiher_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr FK_meas_subscriber_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr drone_cmd_subscriber_;
 
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     
@@ -518,6 +511,7 @@ void set_state_and_dot()
   Eigen::Matrix3d body_rpy_I = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_rpy_D = Eigen::Matrix3d::Zero();
   Eigen::VectorXd quat_meas = Eigen::VectorXd::Zero(4);
+  Eigen::VectorXd FK_meas = Eigen::VectorXd::Zero(6);
 
 
   
@@ -526,7 +520,8 @@ void set_state_and_dot()
   Eigen::Vector3d joint_angle_cmd;
   Eigen::Vector3d joint_angle_meas;
   Eigen::Vector3d joint_angle_dot_meas;  
-  Eigen::VectorXd joint_effort_meas = Eigen::VectorXd::Zero(4);
+  Eigen::VectorXd joint_effort_meas = Eigen::VectorXd::Zero(3);
+  Eigen::VectorXd External_force_sensor_meas = Eigen::VectorXd::Zero(3);
   Eigen::VectorXd State = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_prev = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_dot = Eigen::VectorXd::Zero(9);
@@ -548,6 +543,7 @@ void set_state_and_dot()
   Eigen::VectorXd T12_Pos = Eigen::VectorXd::Zero(6);
   Eigen::VectorXd T23_Pos = Eigen::VectorXd::Zero(6);
 
+  Eigen::VectorXd pinocchio_gravity = Eigen::VectorXd::Zero(10);
 
     double time;
     double time_cnt;

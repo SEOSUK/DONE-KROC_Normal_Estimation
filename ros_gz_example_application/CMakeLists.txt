@@ -21,6 +21,7 @@ find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(Eigen3 REQUIRED)  # Add Eigen3
+find_package(Curses REQUIRED)
 
 
 
@@ -100,53 +101,43 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME})
 
 
-#SEDAS_IGNGZ
-add_executable(sedas_igngz src/sedas_igngz.cpp)
-ament_target_dependencies(sedas_igngz
- rclcpp 
- std_msgs 
- sensor_msgs 
- ros_gz_interfaces 
- geometry_msgs 
- tf2 
- tf2_ros 
- visualization_msgs)
 
-target_include_directories(sedas_igngz PUBLIC
-$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-$<INSTALL_INTERFACE:include>
-${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
+#SEDAS_KEY_PUBLISHER
+add_executable(sedas_key_publisher src/sedas_key_publisher.cpp)
+target_link_libraries(sedas_key_publisher ${CURSES_LIBRARIES})
+ament_target_dependencies(sedas_key_publisher
+ rclcpp
+ std_msgs
+ geometry_msgs
+ )
+
+install(TARGETS
+  sedas_key_publisher
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 
-install(TARGETS
-sedas_igngz
-  DESTINATION lib/${PROJECT_NAME})
+#SEDAS_TRAJ
+add_executable(sedas_traj src/sedas_traj.cpp)
+target_link_libraries(sedas_traj ${CURSES_LIBRARIES})
+ament_target_dependencies(sedas_traj
+ rclcpp
+ std_msgs
+ geometry_msgs
+ )
 
-
-
-#SEDAS_IGNGZ
-add_executable(sedas_control src/sedas_control.cpp)
-ament_target_dependencies(sedas_control
- rclcpp 
- std_msgs 
- sensor_msgs 
- ros_gz_interfaces 
- geometry_msgs 
- tf2 
- tf2_ros 
- visualization_msgs)
-
- target_include_directories(sedas_control PUBLIC
+ target_include_directories(sedas_traj PUBLIC
  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
  $<INSTALL_INTERFACE:include>
  ${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
-)
-
+ )
+ 
 
 install(TARGETS
-sedas_control
-  DESTINATION lib/${PROJECT_NAME})
+  sedas_traj
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 #butterworth filter
 add_library(ButterworthFilter src/ButterworthFilter.cpp)
