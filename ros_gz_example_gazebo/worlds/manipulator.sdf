@@ -141,9 +141,9 @@
             <visual name="obstacle_circle_visual">
             <pose>3 0 5 0 0 0</pose>
                 <geometry>
-                    <sphere>
-                        <radius>3</radius>
-                    </sphere>
+            <box>
+              <size>1 1 1</size>
+            </box>
                 </geometry>
                 <material>
                     <ambient>1.0 1.0 1.0 1.0</ambient>
@@ -153,9 +153,9 @@
             <collision name="obstacle_circle_collision">
             <pose>3 0 5 0 0 0</pose>
                 <geometry>
-                    <sphere>
-                        <radius>3</radius>
-                    </sphere>
+            <box>
+              <size>1 1 1</size>
+            </box>
                 </geometry>
             </collision>
       </link>

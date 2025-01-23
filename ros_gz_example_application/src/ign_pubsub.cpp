@@ -111,11 +111,11 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 40, 40, 50;
-    body_xyz_I.diagonal() << 0.1, 0.1, 2;
-    body_xyz_D.diagonal() << 1, 1, 5;
-    body_rpy_P.diagonal() << 10, 10, 3;
-    body_rpy_D.diagonal() << 0.3, 0.3, 0.2;
+    body_xyz_P.diagonal() << 120, 120, 120;
+    body_xyz_I.diagonal() << 0., 0., 0.;
+    body_xyz_D.diagonal() << 10, 10, 10;
+    body_rpy_P.diagonal() << 60, 60, 3;
+    body_rpy_D.diagonal() << 2, 2, 0.2;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -183,8 +183,8 @@ void set_traj()
 {
   
     joint_angle_cmd[0] = 0; // Joint 1 고정
-    joint_angle_cmd[1] = M_PI / 6; // Joint 2 고정
-    joint_angle_cmd[2] = M_PI / 6; // Joint 3 고정
+    joint_angle_cmd[1] = 0; // Joint 2 고정
+    joint_angle_cmd[2] = 0; // Joint 3 고정
   RCLCPP_ERROR(this->get_logger(), "drone cmd pos: [%lf] [%lf] [%lf]",
                         global_xyz_cmd[0], global_xyz_cmd[1], global_xyz_cmd[2]);
 
