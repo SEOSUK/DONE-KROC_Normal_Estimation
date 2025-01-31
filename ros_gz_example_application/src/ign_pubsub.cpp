@@ -114,10 +114,10 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 1, 1, 1;
+    body_xyz_P.diagonal() << 0.1, 0.1, 0.1;
     body_xyz_I.diagonal() << 0., 0., 0.;
     body_xyz_D.diagonal() << 0, 0, 0;
-    body_rpy_P.diagonal() << 1, 1, 1;
+    body_rpy_P.diagonal() << 0.1, 0.1, 0.1;
     body_rpy_D.diagonal() << 0, 0, 0;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
@@ -129,12 +129,19 @@ class ign_pubsub : public rclcpp::Node
 	    void timer_callback()
     {	//main loop, 100Hz
     // 현재 시간 계산
+
+
+    time_cnt++;
+    time = time_cnt * delta_time;
+
       set_state_and_dot();
       // set_traj();
       // PID_controller();		
-      PID_controller_velocity_jacobian();
-      data_publish();     	    
+      if(time > 5) PID_controller_velocity_jacobian();
+      if(time > 10)data_publish();     	    
 
+  //joint_angle_cmd[1] = M_PI / 8;
+  //joint_angle_cmd[2] = M_PI / 8;
     }
 
 
@@ -151,6 +158,11 @@ void PID_controller_velocity_jacobian()
 {
   state_dot_error = q_dot_des - filtered_state_dot;
 
+
+  std::cout<<"q_dot_des \n" << q_dot_des << std::endl;
+  std::cout<<"filtered_state_dot \n" << filtered_state_dot << std::endl;
+
+
   global_xyz_error[0] = state_dot_error[0];
   global_xyz_error[1] = state_dot_error[1];
   global_xyz_error[2] = state_dot_error[2];
@@ -164,20 +176,20 @@ void PID_controller_velocity_jacobian()
   body_xyz_error_integral += body_xyz_error * delta_time;
   body_xyz_error_d = (body_xyz_error - prev_body_xyz_error) / delta_time;
   prev_body_xyz_error = body_xyz_error;
-  body_force_cmd = body_xyz_P * body_xyz_error + body_xyz_I * body_xyz_error_integral + body_xyz_D * body_xyz_error_d;
+  body_force_cmd = body_xyz_P * body_xyz_error;// + body_xyz_I * body_xyz_error_integral + body_xyz_D * body_xyz_error_d;
   global_force_cmd = Rot_D2G(body_force_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
 
 
   body_rpy_error[2] = std::atan2(std::sin(body_rpy_error[2]), std::cos(body_rpy_error[2]));
   body_rpy_error_integral += body_rpy_error * delta_time;
   body_rpy_error_d = - body_rpy_vel_meas;
-  body_torque_cmd = body_rpy_P * body_rpy_error + body_rpy_D * body_rpy_error_d;
+  body_torque_cmd = body_rpy_P * body_rpy_error;// + body_rpy_D * body_rpy_error_d;
   global_torque_cmd = Rot_D2G(body_torque_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
 
 
-  joint_angle_cmd[0] += state_dot_error[6];
-  joint_angle_cmd[1] += state_dot_error[7];
-  joint_angle_cmd[2] += state_dot_error[8];
+  joint_angle_cmd[0] += q_dot_des[6] * delta_time;
+  joint_angle_cmd[1] += q_dot_des[7] * delta_time;
+  joint_angle_cmd[2] += q_dot_des[8] * delta_time;
 }
 
 

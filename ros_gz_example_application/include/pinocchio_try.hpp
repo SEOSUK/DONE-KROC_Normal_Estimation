@@ -25,5 +25,20 @@
     }
     
 
+    // DLS 기반 유사역행렬 계산 함수
+    Eigen::MatrixXd dampedLeastSquares(const Eigen::MatrixXd& J, double lambda) {
+        int rows = J.rows();
+        int cols = J.cols();
+        
+        if (rows >= cols) {
+            // J이 m×n (m >= n, 일반적인 case)
+            return (J.transpose() * J + lambda * lambda * Eigen::MatrixXd::Identity(cols, cols)).inverse() * J.transpose();
+        } else {
+            // J이 m×n (m < n, underactuated case)
+            return J.transpose() * (J * J.transpose() + lambda * lambda * Eigen::MatrixXd::Identity(rows, rows)).inverse();
+        }
+    }
+
+
 #endif // PINOCCHIO_TRY_HPP
 

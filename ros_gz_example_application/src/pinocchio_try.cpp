@@ -167,8 +167,14 @@ void timerCallback() {
         /////////////////////////////Velocity Jacobian/////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////
 
-        Eigen::MatrixXd J_pinv = pseudoInverse(J);
+        Eigen::MatrixXd J_pinv = dampedLeastSquares(J, 0.01);
         Eigen::VectorXd q_dot_des = J_pinv * global_velocity_cmd;
+
+
+        // std::cout<<"jacobian \n" << J << std::endl;
+        // std::cout<<"J_INV \n" << J_pinv << std::endl;
+        // std::cout<<"global_velocity_cmd \n" << global_velocity_cmd << std::endl;
+        // std::cout<<"q_dot_des \n" << q_dot_des << std::endl;
 
         std_msgs::msg::Float64MultiArray q_dot_des_msg;
         q_dot_des_msg.data.push_back(q_dot_des[0]);
