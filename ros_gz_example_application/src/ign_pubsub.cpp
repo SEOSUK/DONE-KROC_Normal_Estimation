@@ -105,17 +105,20 @@ class ign_pubsub : public rclcpp::Node
           std::bind(&ign_pubsub::drone_cmd_Callback, this, std::placeholders::_1));
 
 
+      q_dot_des_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+        "/pinnochio/q_dot_des", 10,  // Topic name and QoS depth
+        std::bind(&ign_pubsub::q_dot_des_Callback, this, std::placeholders::_1));
 
 
       timer_ = this->create_wall_timer(
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 120, 120, 120;
+    body_xyz_P.diagonal() << 1, 1, 1;
     body_xyz_I.diagonal() << 0., 0., 0.;
-    body_xyz_D.diagonal() << 10, 10, 10;
-    body_rpy_P.diagonal() << 60, 60, 3;
-    body_rpy_D.diagonal() << 2, 2, 0.2;
+    body_xyz_D.diagonal() << 0, 0, 0;
+    body_rpy_P.diagonal() << 1, 1, 1;
+    body_rpy_D.diagonal() << 0, 0, 0;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -127,8 +130,9 @@ class ign_pubsub : public rclcpp::Node
     {	//main loop, 100Hz
     // 현재 시간 계산
       set_state_and_dot();
-      set_traj();
-      PID_controller();		
+      // set_traj();
+      // PID_controller();		
+      PID_controller_velocity_jacobian();
       data_publish();     	    
 
     }
@@ -140,6 +144,41 @@ class ign_pubsub : public rclcpp::Node
   else if (value < min) value = min;
   return value;
   }
+
+
+
+void PID_controller_velocity_jacobian()
+{
+  state_dot_error = q_dot_des - filtered_state_dot;
+
+  global_xyz_error[0] = state_dot_error[0];
+  global_xyz_error[1] = state_dot_error[1];
+  global_xyz_error[2] = state_dot_error[2];
+
+  body_rpy_error[0] = state_dot_error[3];
+  body_rpy_error[1] = state_dot_error[4];
+  body_rpy_error[2] = state_dot_error[5];
+
+
+  body_xyz_error = Rot_G2D(global_xyz_error, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
+  body_xyz_error_integral += body_xyz_error * delta_time;
+  body_xyz_error_d = (body_xyz_error - prev_body_xyz_error) / delta_time;
+  prev_body_xyz_error = body_xyz_error;
+  body_force_cmd = body_xyz_P * body_xyz_error + body_xyz_I * body_xyz_error_integral + body_xyz_D * body_xyz_error_d;
+  global_force_cmd = Rot_D2G(body_force_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
+
+
+  body_rpy_error[2] = std::atan2(std::sin(body_rpy_error[2]), std::cos(body_rpy_error[2]));
+  body_rpy_error_integral += body_rpy_error * delta_time;
+  body_rpy_error_d = - body_rpy_vel_meas;
+  body_torque_cmd = body_rpy_P * body_rpy_error + body_rpy_D * body_rpy_error_d;
+  global_torque_cmd = Rot_D2G(body_torque_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
+
+
+  joint_angle_cmd[0] += state_dot_error[6];
+  joint_angle_cmd[1] += state_dot_error[7];
+  joint_angle_cmd[2] += state_dot_error[8];
+}
 
 
 
@@ -182,9 +221,9 @@ void PID_controller()
 void set_traj()
 {
   
-    joint_angle_cmd[0] = 0; // Joint 1 고정
-    joint_angle_cmd[1] = 0; // Joint 2 고정
-    joint_angle_cmd[2] = 0; // Joint 3 고정
+    // joint_angle_cmd[0] = 0; // Joint 1 고정
+    // joint_angle_cmd[1] = 0; // Joint 2 고정
+    // joint_angle_cmd[2] = 0; // Joint 3 고정
   // RCLCPP_ERROR(this->get_logger(), "drone cmd pos: [%lf] [%lf] [%lf]",
                         // global_xyz_cmd[0], global_xyz_cmd[1], global_xyz_cmd[2]);
 
@@ -394,6 +433,13 @@ void drone_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
   }
 }
 
+void q_dot_des_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+{
+  for (int i = 0; i<9; i++)
+  {
+    q_dot_des[i] = msg->data[i];
+  }
+}
 
 void set_state_and_dot()
 {
@@ -464,6 +510,7 @@ void set_state_and_dot()
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr commanded_publsiher_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr FK_meas_subscriber_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr drone_cmd_subscriber_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr q_dot_des_subscriber_;
 
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     
@@ -513,8 +560,8 @@ void set_state_and_dot()
   Eigen::VectorXd quat_meas = Eigen::VectorXd::Zero(4);
   Eigen::VectorXd FK_meas = Eigen::VectorXd::Zero(6);
 
-
-  
+  Eigen::VectorXd q_dot_des = Eigen::VectorXd::Zero(9);
+  Eigen::VectorXd state_dot_error = Eigen::VectorXd::Zero(9);
 
 
   Eigen::Vector3d joint_angle_cmd;

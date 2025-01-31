@@ -88,7 +88,7 @@ class sedas_rviz : public rclcpp::Node
       Calc_FK();
       Robot_State_Publisher();
       End_Effector_Pos_Vel_Publisher();      
-  End_Effector_Force_Publisher();
+      End_Effector_Force_Publisher();
       data_publisher();
     }
 

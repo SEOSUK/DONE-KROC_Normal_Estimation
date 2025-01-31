@@ -8,6 +8,7 @@
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <pinocchio/algorithm/jacobian.hpp>    // Jacobian 계산
 #include <pinocchio/algorithm/frames.hpp>   // Frames 업데이트
+#include "pinocchio_try.hpp"
 
 
 class PinocchioHandler : public rclcpp::Node {
@@ -46,6 +47,7 @@ public:
       gravity_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pinnochio/gravity", qos_settings);
       EE_vel_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pinnochio/EE_vel", qos_settings);
       EE_pos_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pinnochio/EE_pos", qos_settings);
+      q_dot_des_publisher_= this->create_publisher<std_msgs::msg::Float64MultiArray>("/pinnochio/q_dot_des", qos_settings);
 
         // ROS2 구독자 생성
         state_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
@@ -60,6 +62,12 @@ public:
         input_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
             "/input_vector", 10,
             std::bind(&PinocchioHandler::inputCallback, this, std::placeholders::_1));
+
+
+        drone_cmd_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+          "/manipulator/drone_cmd", 10,  // Topic name and QoS depth
+          std::bind(&PinocchioHandler::drone_cmd_Callback, this, std::placeholders::_1));
+
     }
 
 private:
@@ -73,6 +81,8 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr gravity_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr EE_vel_publisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr EE_pos_publisher_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr q_dot_des_publisher_;
+    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr drone_cmd_subscriber_;
 
 
 
@@ -151,6 +161,26 @@ void timerCallback() {
         EE_vel_msg.data.push_back(angular_velocity[1]);
         EE_vel_msg.data.push_back(angular_velocity[2]);
         EE_vel_publisher_->publish(EE_vel_msg);
+
+
+        ///////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////Velocity Jacobian/////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////
+
+        Eigen::MatrixXd J_pinv = pseudoInverse(J);
+        Eigen::VectorXd q_dot_des = J_pinv * global_velocity_cmd;
+
+        std_msgs::msg::Float64MultiArray q_dot_des_msg;
+        q_dot_des_msg.data.push_back(q_dot_des[0]);
+        q_dot_des_msg.data.push_back(q_dot_des[1]);
+        q_dot_des_msg.data.push_back(q_dot_des[2]);
+        q_dot_des_msg.data.push_back(q_dot_des[3]);
+        q_dot_des_msg.data.push_back(q_dot_des[4]);
+        q_dot_des_msg.data.push_back(q_dot_des[5]);        
+        q_dot_des_msg.data.push_back(q_dot_des[6]);
+        q_dot_des_msg.data.push_back(q_dot_des[7]);
+        q_dot_des_msg.data.push_back(q_dot_des[8]);        
+        EE_pos_publisher_->publish(q_dot_des_msg);
     }
 
 
@@ -198,7 +228,7 @@ void timerCallback() {
         //             orientation(2, 0), orientation(2, 1), orientation(2, 2));
 
     //Publisher 만들어서 교차검증하자
-        std_msgs::msg::Float64MultiArray position_msg;
+    std_msgs::msg::Float64MultiArray position_msg;
     position_msg.data.push_back(position[0]);
     position_msg.data.push_back(position[1]);
     position_msg.data.push_back(position[2]);
@@ -250,12 +280,19 @@ void timerCallback() {
         }
     }
 
-
+    void drone_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+    {
+    for (int i = 0; i<3; i++)
+    {
+        global_velocity_cmd[i] = msg->data[i];
+    }
+    }
 
     Eigen::VectorXd state = Eigen::VectorXd::Zero(10);    
     Eigen::VectorXd input_data;
     Eigen::VectorXd state_dot = Eigen::VectorXd::Zero(9);
     Eigen::VectorXd state_ddot = Eigen::VectorXd::Zero(9);
+    Eigen::VectorXd global_velocity_cmd = Eigen::VectorXd::Zero(6);
 
 
 
