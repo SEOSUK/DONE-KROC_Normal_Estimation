@@ -21,24 +21,22 @@
           <mass>1</mass>
         </inertial>
         <visual name="visual">
-            <pose relative_to="link_drone">0 0 0 0 0 0</pose>
-          <geometry>
-            <box>
-              <size>0.7 0.7 0.3</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.0 0.0 1.0 1</ambient>
-            <diffuse>0.0 0.0 1.0 1</diffuse>
-            <specular>0.0 0.0 1.0 1</specular>
-          </material>
+            <pose relative_to="link_drone">0 0 -0.10 0 0 0.785398</pose>
+            <geometry>
+            <mesh>
+            <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/ImageToStl.com_struthio camelus_10_step214.dae</uri>
+            <scale>0.001 0.001 0.001</scale>
+            </mesh>
+            </geometry>
         </visual>
         <collision name="collision">
-          <geometry>
-            <box>
-              <size>0.7 0.7 0.3</size>
-            </box>
-          </geometry>
+            <pose relative_to="link_drone">0 0 -0.10 0 0 0.785398</pose>
+            <geometry>
+            <mesh>
+            <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/ImageToStl.com_struthio camelus_10_step214.dae</uri>
+            <scale>0.001 0.001 0.001</scale>
+            </mesh>
+            </geometry>
         </collision>
             <!-- Joint 1 Visual (Sphere) -->
             <visual name="visual_joint_1">

@@ -185,8 +185,8 @@ void set_traj()
     joint_angle_cmd[0] = 0; // Joint 1 고정
     joint_angle_cmd[1] = 0; // Joint 2 고정
     joint_angle_cmd[2] = 0; // Joint 3 고정
-  RCLCPP_ERROR(this->get_logger(), "drone cmd pos: [%lf] [%lf] [%lf]",
-                        global_xyz_cmd[0], global_xyz_cmd[1], global_xyz_cmd[2]);
+  // RCLCPP_ERROR(this->get_logger(), "drone cmd pos: [%lf] [%lf] [%lf]",
+                        // global_xyz_cmd[0], global_xyz_cmd[1], global_xyz_cmd[2]);
 
 }
 

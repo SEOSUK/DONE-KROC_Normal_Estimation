@@ -115,8 +115,8 @@ void keyboard_subsciber_callback(const std_msgs::msg::String::SharedPtr msg)
         }
 
         // 현재 명령 출력
-        RCLCPP_INFO(this->get_logger(), "cmd: [%lf] [%lf] [%lf]",
-                    drone_xyz_vel_cmd[0], drone_xyz_vel_cmd[1], drone_xyz_vel_cmd[2]);
+      //  RCLCPP_INFO(this->get_logger(), "cmd: [%lf] [%lf] [%lf]",
+      //              drone_xyz_vel_cmd[0], drone_xyz_vel_cmd[1], drone_xyz_vel_cmd[2]);
     }
     else
     {
