@@ -111,9 +111,9 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 120, 120, 120;
+    body_xyz_P.diagonal() << 120, 120, 500;
     body_xyz_I.diagonal() << 0., 0., 0.;
-    body_xyz_D.diagonal() << 10, 10, 10;
+    body_xyz_D.diagonal() << 10, 10, 50;
     body_rpy_P.diagonal() << 60, 60, 3;
     body_rpy_D.diagonal() << 2, 2, 0.2;
       wrench_msg.entity.name = "link_drone"; // 링크 이름

@@ -16,18 +16,11 @@
     <inertia ixx="0.032" ixy="0" ixz="0" iyy="0.032" iyz="0" izz="0.00012"/>
   </inertial>
   <visual>
+    <origin xyz="0 0 0" rpy="0 0 0.785398"/> <!-- Center of mass adjustment -->  
     <geometry>
-      <box size="0.7 0.7 0.3"/>
+        <mesh filename="package://ros_gz_example_description/models/manipulator/meshes/palletrone.dae" scale="0.001 0.001 0.001"/>
     </geometry>
-    <material name="blue">
-      <color rgba="0.0 0.0 1.0 1.0"/> <!-- 파란색 -->
-    </material>
   </visual>
-  <collision>
-    <geometry>
-      <box size="0.7 0.7 0.3"/>
-    </geometry>
-  </collision>
 </link>
 
   <joint name="joint_1" type="revolute">

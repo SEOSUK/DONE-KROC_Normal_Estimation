@@ -357,8 +357,8 @@ class sedas_rviz : public rclcpp::Node
     marker.scale.z = 0.05;
 
     marker.color.a = 1.0; // 불투명도
-    marker.color.r = 1.0; // 빨간색 (속도)
-    marker.color.g = 0.0;
+    marker.color.r = 0.0; // 빨간색 (속도)
+    marker.color.g = 1.0;
     marker.color.b = 0.0;
 
     // 퍼블리시
