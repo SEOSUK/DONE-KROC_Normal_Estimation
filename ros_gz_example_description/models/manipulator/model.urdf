@@ -18,7 +18,7 @@
   <visual>
     <origin xyz="0 0 0" rpy="0 0 0.785398"/> <!-- Center of mass adjustment -->  
     <geometry>
-        <mesh filename="package://ros_gz_example_description/models/manipulator/meshes/palletrone.dae" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://ros_gz_example_description/models/manipulator/meshes/palletrone.dae" scale="0.00085 0.00085 0.00085"/>
     </geometry>
   </visual>
 </link>

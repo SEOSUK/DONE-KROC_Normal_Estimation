@@ -70,7 +70,7 @@
         <linear>0.01</linear>
         <quadratic>0.001</quadratic>
       </attenuation>
-      <direction>-0.5 0.1 -0.9</direction>
+      <direction>0.5 0.1 -0.9</direction>
     </light>
 
 
@@ -135,37 +135,203 @@
       </plugin>      
     </model>
 
-    <model name="obstacle_circle">
-	<static>true</static>
-      <link name="obstacle_circle_link">
-            <visual name="obstacle_circle_visual">
-            <pose>3 0 5 0 0 0.4</pose>
-                <geometry>
+
+    <model name="wall">
+      <static>true</static> <!-- 벽은 고정된 객체 -->
+      <link name="wall_link">
+        <pose>3 0 1 0 0 0</pose> <!-- (x, y, z) 위치 및 (roll, pitch, yaw) 회전 -->
+        
+        <!-- 벽의 충돌 영역 -->
+        <collision name="wall_collision">
+          <geometry>
             <box>
-              <size>5 5 5</size>
+              <size>0.1 2 1</size> <!-- 가로 4m, 두께 0.2m, 높이 1m -->
             </box>
-                </geometry>
-                <material>
-                    <ambient>1.0 1.0 1.0 1.0</ambient>
-                    <diffuse>1.0 1.0 1.0 1.0</diffuse>
-                </material>
-            </visual>
-            <collision name="obstacle_circle_collision">
-            <pose>3 0 5 0 0 0.4</pose>
-                <geometry>
+          </geometry>
+          <surface>
+                    <friction>
+                    <ode>
+                        <mu>0.3</mu>
+                        <mu2>0.3</mu2>
+                    </ode>
+                    </friction>
+          </surface>
+        </collision>
+
+        <!-- 벽의 시각적 표현 -->
+        <visual name="wall_visual">
+          <geometry>
             <box>
-              <size>5 5 5</size>
+              <size>0.1 2 1</size> <!-- 가로 4m, 두께 0.2m, 높이 1m -->
             </box>
-                </geometry>
-              <surface>
-                <friction>
-                  <ode>
-                    <mu>0.00000001</mu>  <!-- 정지 마찰 계수 -->
-                    <mu2>0.00000001</mu2>  <!-- 슬라이딩 마찰 계수 -->
-                  </ode>
-                </friction>
-              </surface>
-            </collision>
+          </geometry>
+            <material>
+              <ambient>0.3 0.3 1.0 0.8</ambient>  <!-- 푸른빛 유리 -->
+              <diffuse>0.3 0.3 1.0 0.8</diffuse>
+              <specular>1 1 1 1</specular>  <!-- 반짝임 -->
+            </material>
+        </visual>
+      </link>
+    </model>
+    
+    <model name="wall2">
+      <static>true</static> <!-- 고정된 벽 -->
+      <link name="wall2_link">
+        <pose>3.1736 -1.9848 1 0 0 0.1745</pose> <!-- 기존 벽과 맞닿도록 위치 조정 -->
+        
+        <!-- 벽의 충돌 영역 -->
+        <collision name="wall2_collision">
+          <geometry>
+            <box>
+              <size>0.1 2 1</size> <!-- 가로 0.1m, 두께 2m, 높이 1m -->
+            </box>
+          </geometry>
+          <surface>
+                    <friction>
+                    <ode>
+                        <mu>0.3</mu>
+                        <mu2>0.3</mu2>
+                    </ode>
+                    </friction>
+          </surface>
+        </collision>
+
+        <!-- 벽의 시각적 표현 -->
+        <visual name="wall2_visual">
+          <geometry>
+            <box>
+              <size>0.1 2 1</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.3 0.3 1.0 0.8</ambient>  <!-- 푸른빛 유리 -->
+            <diffuse>0.3 0.3 1.0 0.8</diffuse>
+            <specular>1 1 1 1</specular>  <!-- 반짝임 -->
+          </material>
+        </visual>
+      </link>
+    </model>
+
+
+
+
+
+
+
+
+
+
+    <model name="wal">
+      <static>true</static> <!-- 벽은 고정된 객체 -->
+      <link name="wal_link">
+        <pose>1 0 1 0 0 0</pose> <!-- (x, y, z) 위치 및 (roll, pitch, yaw) 회전 -->
+        
+        <!-- 벽의 충돌 영역 -->
+        <collision name="wal_collision">
+          <geometry>
+            <box>
+              <size>0.01 1 1</size> <!-- 가로 4m, 두께 0.2m, 높이 1m -->
+            </box>
+          </geometry>
+          <surface>
+                    <friction>
+                    <ode>
+                        <mu>0.3</mu>
+                        <mu2>0.3</mu2>
+                    </ode>
+                    </friction>
+          </surface>
+        </collision>
+
+        <!-- 벽의 시각적 표현 -->
+        <visual name="wal_visual">
+          <geometry>
+            <box>
+              <size>0.01 1 1</size> <!-- 가로 4m, 두께 0.2m, 높이 1m -->
+            </box>
+          </geometry>
+            <material>
+              <ambient>0.3 0.3 1.0 0.8</ambient>  <!-- 푸른빛 유리 -->
+              <diffuse>0.3 0.3 1.0 0.8</diffuse>
+              <specular>1 1 1 1</specular>  <!-- 반짝임 -->
+            </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wal2">
+      <static>true</static> <!-- 벽은 고정된 객체 -->
+      <link name="wal2_link">
+        <pose>0.9145 0.7349 1 0 0 0.349066</pose> <!-- (x, y, z) 위치 및 (roll, pitch, yaw) 회전 -->
+        
+        <!-- 벽의 충돌 영역 -->
+        <collision name="wal2_collision">
+          <geometry>
+            <box>
+              <size>0.01 0.5 1</size> <!-- 가로 4m, 두께 0.2m, 높이 1m -->
+            </box>
+          </geometry>
+          <surface>
+                    <friction>
+                    <ode>
+                        <mu>0.3</mu>
+                        <mu2>0.3</mu2>
+                    </ode>
+                    </friction>
+          </surface>
+        </collision>
+
+        <!-- 벽의 시각적 표현 -->
+        <visual name="wal2_visual">
+          <geometry>
+            <box>
+              <size>0.01 0.5 1</size> <!-- 가로 4m, 두께 0.2m, 높이 1m -->
+            </box>
+          </geometry>
+            <material>
+              <ambient>0.3 0.3 1.0 0.8</ambient>  <!-- 푸른빛 유리 -->
+              <diffuse>0.3 0.3 1.0 0.8</diffuse>
+              <specular>1 1 1 1</specular>  <!-- 반짝임 -->
+            </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wal3">
+      <static>true</static> <!-- 벽은 고정된 객체 -->
+      <link name="wal3_link">
+        <pose>0.875 -0.7165 1 0 0 -0.523599</pose> <!-- (x, y, z) 위치 및 (roll, pitch, yaw) 회전 -->
+        
+        <!-- 벽의 충돌 영역 -->
+        <collision name="wal3_collision">
+          <geometry>
+            <box>
+              <size>0.01 0.5 1</size> <!-- 가로 4m, 두께 0.2m, 높이 1m -->
+            </box>
+          </geometry>
+          <surface>
+                    <friction>
+                    <ode>
+                        <mu>0.3</mu>
+                        <mu2>0.3</mu2>
+                    </ode>
+                    </friction>
+          </surface>
+        </collision>
+
+        <!-- 벽의 시각적 표현 -->
+        <visual name="wal3_visual">
+          <geometry>
+            <box>
+              <size>0.01 0.5 1</size> <!-- 가로 4m, 두께 0.2m, 높이 1m -->
+            </box>
+          </geometry>
+            <material>
+              <ambient>0.3 0.3 1.0 0.8</ambient>  <!-- 푸른빛 유리 -->
+              <diffuse>0.3 0.3 1.0 0.8</diffuse>
+              <specular>1 1 1 1</specular>  <!-- 반짝임 -->
+            </material>
+        </visual>
       </link>
     </model>
 

@@ -91,11 +91,11 @@ void keyboard_subsciber_callback(const std_msgs::msg::String::SharedPtr msg)
         {
             drone_xyz_vel_cmd[0] -= 0.1;
         }
-        else if (input_char == 'd')
+        else if (input_char == 'a')
         {
             drone_xyz_vel_cmd[1] += 0.1;
         }
-        else if (input_char == 'a')
+        else if (input_char == 'd')
         {
             drone_xyz_vel_cmd[1] -= 0.1;
         }

@@ -73,6 +73,9 @@ class sedas_rviz : public rclcpp::Node
       EE_Force_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>(
     "/EE_Force_marker", 10);    
 
+      Normal_Vector_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>(
+    "/Normal_Vector_marker", 10);        
+
       timer_ = this->create_wall_timer(
       10ms, std::bind(&sedas_rviz::timer_callback, this));
 
@@ -87,8 +90,9 @@ class sedas_rviz : public rclcpp::Node
     // 현재 시간 계산
       Calc_FK();
       Robot_State_Publisher();
-      End_Effector_Pos_Vel_Publisher();      
-  End_Effector_Force_Publisher();
+      End_Effector_Pos_Vel_Publisher();
+      End_Effector_Force_Publisher();
+      Normal_vector_estimation_and_visual_Publisher();
       data_publisher();
     }
 
@@ -405,13 +409,61 @@ class sedas_rviz : public rclcpp::Node
     EE_Force_publisher_->publish(marker);
   }
 
-void data_publish()
-{	// publish!!
+  void Normal_vector_estimation_and_visual_Publisher()
+  {
+    // external force sensor data: External_force_sensor_meas_global
+    // end effector velocity data: EE_lin_vel
+    // Estimated_normal_Vector: Estimated_normal_Vector
+    double alpha = (External_force_sensor_meas_global.dot(EE_lin_vel)) / (EE_lin_vel.dot(EE_lin_vel));
+    Estimated_normal_Vector = External_force_sensor_meas_global -  alpha * EE_lin_vel;
+
+    Estimated_normal_Vector = Estimated_normal_Vector.normalized();
+
+
+
+    auto marker = visualization_msgs::msg::Marker();
+    marker.header.frame_id = "world";
+    marker.header.stamp = this->get_clock()->now();
+    marker.ns = "Normal_Vector";
+    marker.id = 0;
+    marker.type = visualization_msgs::msg::Marker::ARROW;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+
+    // 화살표의 시작점과 끝점 설정
+    geometry_msgs::msg::Point start_point, end_point;
+    start_point.x = FK_EE_Pos[0]; // 현재 위치
+    start_point.y = FK_EE_Pos[1];
+    start_point.z = FK_EE_Pos[2];
+
+    end_point.x = start_point.x + Estimated_normal_Vector[0]; // 속도 벡터 방향
+    end_point.y = start_point.y + Estimated_normal_Vector[1];
+    end_point.z = start_point.z + Estimated_normal_Vector[2];
+
+    marker.points.push_back(start_point);
+    marker.points.push_back(end_point);
+
+    // 화살표의 색상 및 크기 설정
+    marker.scale.x = 0.02; // 화살표의 줄기 두께
+    marker.scale.y = 0.05; // 화살표의 머리 크기
+    marker.scale.z = 0.05;
+
+    marker.color.a = 1.0; // 불투명도
+    marker.color.r = 0.0; // 빨간색 (속도)
+    marker.color.g = 0.0;
+    marker.color.b = 1.0;
+
+    // 퍼블리시
+    Normal_Vector_publisher_->publish(marker);
+  }
+
+
+  void data_publish()
+  {	// publish!!
 
 
 
 
-}
+  }
  
 void joint_state_subsciber_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
@@ -544,6 +596,7 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
 
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Vel_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Force_publisher_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr Normal_Vector_publisher_;
 
 
 
@@ -598,6 +651,7 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
 
   Eigen::VectorXd External_force_sensor_meas = Eigen::VectorXd::Zero(3);
   Eigen::VectorXd External_force_sensor_meas_global = Eigen::VectorXd::Zero(3);
+  Eigen::VectorXd Estimated_normal_Vector = Eigen::VectorXd::Zero(3);
 
 
 

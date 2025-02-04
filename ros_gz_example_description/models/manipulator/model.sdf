@@ -21,20 +21,20 @@
           <mass>1</mass>
         </inertial>
         <visual name="visual">
-            <pose relative_to="link_drone">0 0 -0.10 0 0 0.785398</pose>
+            <pose relative_to="link_drone">0 0 0 0 0 0.785398</pose>
             <geometry>
             <mesh>
             <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/palletrone.dae</uri>
-            <scale>0.001 0.001 0.001</scale>
+            <scale>0.00085 0.00085 0.00085</scale>
             </mesh>
             </geometry>
         </visual>
         <collision name="collision">
-            <pose relative_to="link_drone">0 0 -0.10 0 0 0.785398</pose>
+            <pose relative_to="link_drone">0 0 0 0 0 0.785398</pose>
             <geometry>
             <mesh>
             <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/palletrone.dae</uri>
-            <scale>0.0005 0.0005 0.0005</scale>
+            <scale>0.0001 0.0001 0.0001</scale>
             </mesh>
             </geometry>
         </collision>
@@ -373,11 +373,11 @@
                 <surface>
                     <friction>
                     <ode>
-                        <mu>0.00000001</mu>  <!-- 정지 마찰 계수 -->
-                        <mu2>0.00000001</mu2>  <!-- 슬라이딩 마찰 계수 -->
+                        <mu>0.3</mu>
+                        <mu2>0.3</mu2>
                     </ode>
                     </friction>
-                </surface>
+                </surface>                
             </collision>
         </link>
     </model>

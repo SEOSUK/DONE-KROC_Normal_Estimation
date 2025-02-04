@@ -111,11 +111,11 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 120, 120, 500;
+    body_xyz_P.diagonal() << 15, 120, 500;
     body_xyz_I.diagonal() << 0., 0., 0.;
     body_xyz_D.diagonal() << 10, 10, 50;
-    body_rpy_P.diagonal() << 60, 60, 3;
-    body_rpy_D.diagonal() << 2, 2, 0.2;
+    body_rpy_P.diagonal() << 60, 60, 5;
+    body_rpy_D.diagonal() << 2, 2, 0.5;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -160,6 +160,7 @@ void PID_controller()
 
 
 
+
   body_rpy_cmd = Rot_G2D(global_rpy_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
 
   body_rpy_error = body_rpy_cmd - body_rpy_meas;
@@ -181,12 +182,21 @@ void PID_controller()
 
 void set_traj()
 {
-  
-    joint_angle_cmd[0] = 0; // Joint 1 고정
-    joint_angle_cmd[1] = 0; // Joint 2 고정
-    joint_angle_cmd[2] = 0; // Joint 3 고정
-  // RCLCPP_ERROR(this->get_logger(), "drone cmd pos: [%lf] [%lf] [%lf]",
-                        // global_xyz_cmd[0], global_xyz_cmd[1], global_xyz_cmd[2]);
+    double amplitude = 20.0 * M_PI / 180.0; // 20도 → 라디안 변환
+    double period = 3.0; // 주기 3초
+    double omega = 2.0 * M_PI / period; // 각주파수 (rad/s)
+    
+    // 현재 시간 (초) 계산
+    double t = this->get_clock()->now().seconds();
+   global_rpy_cmd[0] = M_PI / 6;
+  //  global_rpy_cmd[1] = M_PI / 6;
+   global_rpy_cmd[2] = M_PI / 6;
+
+
+    // 사인 함수 적용
+    joint_angle_cmd[0] = M_PI/6;
+    joint_angle_cmd[1] = 0;
+    joint_angle_cmd[2] = 0;
 
 }
 
@@ -285,6 +295,7 @@ void joint_state_subsciber_callback(const sensor_msgs::msg::JointState::SharedPt
   joint_angle_meas[0] = msg->position[0]; // D-H Parameter!!
   joint_angle_meas[1] = msg->position[1]; 
   joint_angle_meas[2] = msg->position[2];
+
 }
  
 void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
@@ -310,9 +321,9 @@ void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
     body_rpy_vel_meas[1] = msg->angular_velocity.y;
     body_rpy_vel_meas[2] = msg->angular_velocity.z;
 
-    global_xyz_ddot_meas[0] = msg->linear_acceleration.x;
-    global_xyz_ddot_meas[1] = msg->linear_acceleration.y;
-    global_xyz_ddot_meas[2] = msg->linear_acceleration.z;
+    body_xyz_ddot_meas[0] = msg->linear_acceleration.x;
+    body_xyz_ddot_meas[1] = msg->linear_acceleration.y;
+    body_xyz_ddot_meas[2] = msg->linear_acceleration.z;
 
 
   global_rpy_meas = Rot_D2G(body_rpy_meas, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
@@ -398,37 +409,19 @@ void drone_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
 void set_state_and_dot()
 {
 
-    State << global_xyz_meas[0], global_xyz_meas[1], global_xyz_meas[2], 
-    global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2], 
-    joint_angle_meas[0], joint_angle_meas[1], joint_angle_meas[2];
+  global_xyz_vel = (global_xyz_meas - global_xyz_meas_prev) / delta_time;
+  global_xyz_meas_prev = global_xyz_meas;
+  body_xyz_vel = Rot_G2D(global_xyz_vel, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
+
+
+//  joint_angle_vel = (joint_angle_meas - joint_angle_meas_prev) / delta_time;
+//  joint_angle_meas_prev = joint_angle_meas;
+
+
+  raw_State_dot << body_xyz_vel[0], body_xyz_vel[1], body_xyz_vel[2], 
+    body_rpy_vel_meas[0], body_rpy_vel_meas[1], body_rpy_vel_meas[2], 
+    joint_angle_dot_meas[0], joint_angle_dot_meas[1], joint_angle_dot_meas[2];
  
-
-    // // 수치미분 계산
-    Eigen::VectorXd raw_State_dot = (State - State_prev) / delta_time;
-    State_prev = State;
-
-    // Roll, Pitch, Yaw 변화율 (raw_State_dot[3], raw_State_dot[4], raw_State_dot[5])
-    double roll = State[3];
-    double pitch = State[4];
-    double roll_dot = raw_State_dot[3];
-    double pitch_dot = raw_State_dot[4];
-    double yaw_dot = raw_State_dot[5];
-
-    // 변환 행렬 T(r, p) 생성
-    Eigen::Matrix3d T;
-    T << 1, 0, -sin(pitch),
-         0, cos(roll), cos(pitch) * sin(roll),
-         0, -sin(roll), cos(pitch) * cos(roll);
-
-    // 각속도 계산
-    Eigen::Vector3d euler_rate(roll_dot, pitch_dot, yaw_dot); // Euler 각 변화율
-    Eigen::Vector3d angular_velocity = T * euler_rate;       // 각속도 (wx, wy, wz)
-
-    // raw_State_dot의 각속도 값 수정
-    raw_State_dot[3] = angular_velocity[0]; // wx
-    raw_State_dot[4] = angular_velocity[1]; // wy
-    raw_State_dot[5] = angular_velocity[2]; // wz
-
 
     filtered_state_dot = state_filter.apply(raw_State_dot);
 
@@ -479,11 +472,20 @@ void set_state_and_dot()
 
 
   Eigen::Vector3d global_xyz_meas;
+  Eigen::Vector3d global_xyz_meas_prev;
+  Eigen::Vector3d global_xyz_vel;
+  Eigen::Vector3d body_xyz_vel;
+
+
+
+
+
   Eigen::Vector3d global_xyz_cmd = Eigen::Vector3d::Zero();
   Eigen::Vector3d global_xyz_error;
   Eigen::Vector3d global_xyz_error_integral;
   Eigen::Vector3d global_xyz_error_d;
   Eigen::Vector3d global_xyz_ddot_meas;
+  Eigen::Vector3d body_xyz_ddot_meas;
   Eigen::Vector3d body_xyz_error;
   Eigen::Vector3d body_xyz_error_integral = Eigen::Vector3d::Zero();
   Eigen::Vector3d body_xyz_error_d = Eigen::Vector3d::Zero();
@@ -519,11 +521,14 @@ void set_state_and_dot()
 
   Eigen::Vector3d joint_angle_cmd;
   Eigen::Vector3d joint_angle_meas;
+  Eigen::Vector3d joint_angle_meas_prev;
+  Eigen::Vector3d joint_angle_vel;
   Eigen::Vector3d joint_angle_dot_meas;  
   Eigen::VectorXd joint_effort_meas = Eigen::VectorXd::Zero(3);
   Eigen::VectorXd External_force_sensor_meas = Eigen::VectorXd::Zero(3);
   Eigen::VectorXd State = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_prev = Eigen::VectorXd::Zero(9);
+  Eigen::VectorXd raw_State_dot = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_dot = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_quat = Eigen::VectorXd::Zero(10);
   Eigen::VectorXd State_quat_prev = Eigen::VectorXd::Zero(10);
