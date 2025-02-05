@@ -40,5 +40,13 @@ inline Eigen::Vector3d Rot_D2G(const Eigen::Vector3d& body_vector, double roll, 
     return R * body_vector;
 }
 
+// Function to transform a vector from Global Frame to Normal Frame
+inline Eigen::Vector3d Rot_G2N(const Eigen::Vector3d& global_vector, double roll, double pitch, double yaw) {
+    Eigen::Matrix3d R = get_rotation_matrix(roll, pitch, yaw);
+    return R.transpose() * global_vector;
+}
+
+
+
 #endif // SEDAS_ROT_HPP
 

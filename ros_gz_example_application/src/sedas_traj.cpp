@@ -10,6 +10,8 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <ncurses.h> // ncurses 헤더
+#include "sedas_rot.hpp"
+#include <geometry_msgs/msg/wrench_stamped.hpp>
 
 using namespace std::chrono_literals;
 
@@ -32,11 +34,23 @@ class sedas_traj : public rclcpp::Node
           "keyboard_input", qos_settings,
           std::bind(&sedas_traj::keyboard_subsciber_callback, this, std::placeholders::_1));
 
+      Normal_rpy_angle_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+          "/Normal_Vector_rpy_angle", qos_settings,
+          std::bind(&sedas_traj::Normal_rpy_subscriber_callback, this, std::placeholders::_1));
 
 
 
     drone_cmd_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
     "/manipulator/drone_cmd", 10);
+
+    // Joint EE Subscriber
+    joint_EE_torque_subscriber_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
+        "/force_torque_EE", 10,  // Topic name and QoS depth
+        std::bind(&sedas_traj::jointEE_torque_Callback, this, std::placeholders::_1));
+
+    EE_vel_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+        "/pinnochio/EE_vel", qos_settings,
+        std::bind(&sedas_traj::EE_vel_callback, this, std::placeholders::_1)); 
 
 
       timer_ = this->create_wall_timer(
@@ -64,65 +78,123 @@ class sedas_traj : public rclcpp::Node
       drone_cmd.data.push_back(drone_xyz_position_cmd[1]);
       drone_cmd.data.push_back(drone_xyz_position_cmd[2]);
 
+
       drone_cmd_publisher_->publish(drone_cmd);
     }
 
 
     void traj_gen()
     {
-    drone_xyz_position_cmd += drone_xyz_vel_cmd * 0.01;
+      // if (External_force_sensor_meas.norm() < 0.01 
+      //     || EE_lin_vel.norm() < 0.01) {
+      //     // 접촉이 없는 경우, 혹은 속도가 빠르지 않은 경우
+
+      //     drone_xyz_position_cmd += drone_xyz_vel_cmd * 0.01;
+
+      // }
+      // else
+      // {
+      // //  orientation command를 align 시키기
+      //     R_B2G = get_rotation_matrix(Normal_rpy_angle[0], Normal_rpy_angle[1], Normal_rpy_angle[2]);
+        
+      // //  drone_xyz_vel_cmd는 이미 Normal Frame 기준 속도임
+      //   Eigen::Vector3d vel_normal = drone_xyz_vel_cmd;
+      
+      //   // 🔹 C_x 방향 성분 제거
+      //   vel_normal(0) = 0.0;  // 법선 방향 속도 제거
+
+      //   // 🔹 다시 Global Frame으로 변환
+      //   Eigen::Vector3d vel_filtered = R_B2G * vel_normal;  
+
+      //   // 🔹 Global Frame에서 최종 위치 업데이트
+      //   drone_xyz_position_cmd += vel_filtered * 0.01;
+
+
+
+      // }
+          drone_xyz_position_cmd += drone_xyz_vel_cmd * 0.01;
+
     }
 
 
-void keyboard_subsciber_callback(const std_msgs::msg::String::SharedPtr msg)
-{
-    // 입력된 키를 문자열로 가져옴
-    std::string input = msg->data;
 
-    if (!input.empty()) // 입력 값이 비어있지 않을 경우
-    {
-        char input_char = input[0]; // 문자열의 첫 번째 문자만 사용
 
-        if (input_char == 'w')
-        {
-            drone_xyz_vel_cmd[0] += 0.1;
-        }
-        else if (input_char == 's')
-        {
-            drone_xyz_vel_cmd[0] -= 0.1;
-        }
-        else if (input_char == 'a')
-        {
-            drone_xyz_vel_cmd[1] += 0.1;
-        }
-        else if (input_char == 'd')
-        {
-            drone_xyz_vel_cmd[1] -= 0.1;
-        }
-        else if (input_char == 'e')
-        {
-            drone_xyz_vel_cmd[2] += 0.1;
-        }
-        else if (input_char == 'q')
-        {
-            drone_xyz_vel_cmd[2] -= 0.1;
-        }
-        else if (input_char == 'x')
-        {
-            drone_xyz_vel_cmd[0] = 0;
-            drone_xyz_vel_cmd[1] = 0;
-            drone_xyz_vel_cmd[2] = 0;
-        }
 
-        // 현재 명령 출력
-      //  RCLCPP_INFO(this->get_logger(), "cmd: [%lf] [%lf] [%lf]",
-      //              drone_xyz_vel_cmd[0], drone_xyz_vel_cmd[1], drone_xyz_vel_cmd[2]);
-    }
-    else
-    {
-        RCLCPP_WARN(this->get_logger(), "입력된 키가 없습니다!");
-    }
-}
+
+  void Normal_rpy_subscriber_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+  {
+    Normal_rpy_angle[0] = msg->data[0];
+    Normal_rpy_angle[1] = msg->data[1];
+    Normal_rpy_angle[2] = msg->data[2];
+  }
+
+
+  void keyboard_subsciber_callback(const std_msgs::msg::String::SharedPtr msg)
+  {
+      // 입력된 키를 문자열로 가져옴
+      std::string input = msg->data;
+
+      if (!input.empty()) // 입력 값이 비어있지 않을 경우
+      {
+          char input_char = input[0]; // 문자열의 첫 번째 문자만 사용
+
+          if (input_char == 'w')
+          {
+              drone_xyz_vel_cmd[0] += 0.1;
+          }
+          else if (input_char == 's')
+          {
+              drone_xyz_vel_cmd[0] -= 0.1;
+          }
+          else if (input_char == 'a')
+          {
+              drone_xyz_vel_cmd[1] += 0.1;
+          }
+          else if (input_char == 'd')
+          {
+              drone_xyz_vel_cmd[1] -= 0.1;
+          }
+          else if (input_char == 'e')
+          {
+              drone_xyz_vel_cmd[2] += 0.1;
+          }
+          else if (input_char == 'q')
+          {
+              drone_xyz_vel_cmd[2] -= 0.1;
+          }
+          else if (input_char == 'x')
+          {
+              drone_xyz_vel_cmd[0] = 0;
+              drone_xyz_vel_cmd[1] = 0;
+              drone_xyz_vel_cmd[2] = 0;
+          }
+
+          // 현재 명령 출력
+        //  RCLCPP_INFO(this->get_logger(), "cmd: [%lf] [%lf] [%lf]",
+        //              drone_xyz_vel_cmd[0], drone_xyz_vel_cmd[1], drone_xyz_vel_cmd[2]);
+      }
+      else
+      {
+          RCLCPP_WARN(this->get_logger(), "입력된 키가 없습니다!");
+      }
+  }
+
+  void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
+  {
+      External_force_sensor_meas[0] = msg->wrench.force.x;
+      External_force_sensor_meas[1] = msg->wrench.force.y;
+      External_force_sensor_meas[2] = msg->wrench.force.z;
+      // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);    
+
+  }
+
+  void EE_vel_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+  {  
+
+      EE_lin_vel[0] = msg->data[0];
+      EE_lin_vel[1] = msg->data[1];
+      EE_lin_vel[2] = msg->data[2];
+  }
 
 
   rclcpp::TimerBase::SharedPtr timer_;
@@ -131,10 +203,10 @@ void keyboard_subsciber_callback(const std_msgs::msg::String::SharedPtr msg)
 
 
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr keyboard_subscriber_; 
-
-
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr Normal_rpy_angle_subscriber_; 
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr drone_cmd_publisher_;
-
+  rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_EE_torque_subscriber_; 
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_vel_subscriber_; 
 
 
 
@@ -145,12 +217,24 @@ void keyboard_subsciber_callback(const std_msgs::msg::String::SharedPtr msg)
   //TODO:: 아래 세 줄 정의 제대로 하기
 
 
-  Eigen::Vector3d drone_xyz_position_cmd = Eigen::Vector3d::Zero();
+  Eigen::Vector3d drone_xyz_position_cmd = Eigen::Vector3d::Zero(3);
   Eigen::Vector3d drone_xyz_vel_cmd = Eigen::Vector3d::Zero();
+  Eigen::Vector3d drone_xyz_normal_vel_cmd = Eigen::Vector3d::Zero();
+  Eigen::Vector3d External_force_sensor_meas = Eigen::Vector3d::Zero();
+  Eigen::Vector3d External_force_sensor_meas_global = Eigen::Vector3d::Zero();
+
+  Eigen::Vector3d drone_rpy_position_cmd = Eigen::Vector3d::Zero(3);
+  Eigen::Vector3d drone_rpy_vel_cmd = Eigen::Vector3d::Zero();
+  Eigen::Vector3d drone_rpy_normal_vel_cmd = Eigen::Vector3d::Zero();
 
 
-  Eigen::Vector3d EE_lin_vel_global;
 
+  Eigen::Vector3d EE_lin_vel;
+  Eigen::Vector3d Normal_rpy_angle;
+
+
+
+  Eigen::Matrix3d R_B2G;
 
 
     double time;
@@ -162,7 +246,7 @@ void keyboard_subsciber_callback(const std_msgs::msg::String::SharedPtr msg)
     double l1 = 0.1;
     double l2 = 0.2;
     double l3 = 0.2;
-
+    double external_force_norm = 0;
 
 
 };

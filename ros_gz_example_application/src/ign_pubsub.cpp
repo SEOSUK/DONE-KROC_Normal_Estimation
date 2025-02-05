@@ -111,11 +111,11 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 15, 120, 500;
+    body_xyz_P.diagonal() << 30, 120, 500;
     body_xyz_I.diagonal() << 0., 0., 0.;
-    body_xyz_D.diagonal() << 10, 10, 50;
-    body_rpy_P.diagonal() << 60, 60, 5;
-    body_rpy_D.diagonal() << 2, 2, 0.5;
+    body_xyz_D.diagonal() << 5, 10, 50;
+    body_rpy_P.diagonal() << 70, 70, 30;
+    body_rpy_D.diagonal() << 7, 7, 3;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -154,7 +154,6 @@ void PID_controller()
 
 
   body_force_cmd = body_xyz_P * body_xyz_error + body_xyz_I * body_xyz_error_integral + body_xyz_D * body_xyz_error_d;
-
   global_force_cmd = Rot_D2G(body_force_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
 
 
@@ -188,15 +187,15 @@ void set_traj()
     
     // 현재 시간 (초) 계산
     double t = this->get_clock()->now().seconds();
-   global_rpy_cmd[0] = M_PI / 6;
+  //  global_rpy_cmd[0] = M_PI / 6;
   //  global_rpy_cmd[1] = M_PI / 6;
-   global_rpy_cmd[2] = M_PI / 6;
+  //  global_rpy_cmd[2] = M_PI / 6;
 
 
     // 사인 함수 적용
-    joint_angle_cmd[0] = M_PI/6;
-    joint_angle_cmd[1] = 0;
-    joint_angle_cmd[2] = 0;
+  //  joint_angle_cmd[0] = M_PI/6;
+  //  joint_angle_cmd[1] = 0;
+  //  joint_angle_cmd[2] = 0;
 
 }
 
@@ -403,6 +402,9 @@ void drone_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
   {
   global_xyz_cmd[i] = msg->data[i];
   }
+  // body_rpy_cmd[0] = msg->data[3];
+  // body_rpy_cmd[1] = msg->data[4];
+  // global_rpy_cmd[2] = msg->data[5];
 }
 
 
