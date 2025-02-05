@@ -421,12 +421,8 @@ class sedas_rviz : public rclcpp::Node
     // end effector velocity data: EE_lin_vel
     // Estimated_normal_Vector: Estimated_normal_Vector
     double alpha = (External_force_sensor_meas_global.dot(EE_lin_vel)) / (EE_lin_vel.dot(EE_lin_vel));
-    Estimated_normal_Vector = External_force_sensor_meas_global - alpha * EE_lin_vel;
-
+    Estimated_normal_Vector = External_force_sensor_meas_global -  alpha * EE_lin_vel;
     Estimated_normal_Vector = Estimated_normal_Vector.normalized();
-    RCLCPP_INFO(this->get_logger(), "External_normal_force_meas [%lf] [%lf] [%lf]", External_normal_force_meas[0], External_normal_force_meas[1], External_normal_force_meas[2]);    
-    RCLCPP_INFO(this->get_logger(), "Estimated_normal_Vector_norm [%lf] [%lf] [%lf]", Estimated_normal_Vector_norm[0], Estimated_normal_Vector_norm[1], Estimated_normal_Vector_norm[2]);    
-
 
 
     auto marker = visualization_msgs::msg::Marker();
@@ -443,7 +439,7 @@ class sedas_rviz : public rclcpp::Node
     start_point.y = FK_EE_Pos[1];
     start_point.z = FK_EE_Pos[2];
 
-    end_point.x = start_point.x + Estimated_normal_Vector[0];
+    end_point.x = start_point.x + Estimated_normal_Vector[0]; // 속도 벡터 방향
     end_point.y = start_point.y + Estimated_normal_Vector[1];
     end_point.z = start_point.z + Estimated_normal_Vector[2];
 
@@ -471,14 +467,14 @@ void Define_Normal_Frame()
 
     // **Step 1: Normal Frame 정의**
     Eigen::Vector3d C_x = Estimated_normal_Vector;
-    Eigen::Vector3d C_y = C_x.cross(g).normalized();
+    Eigen::Vector3d C_y = C_x.cross(g);
     if (C_y.norm() < 1e-6) {
         // RCLCPP_WARN(this->get_logger(), "Gravity vector and normal vector are parallel!");
         return;
     }
     C_x.normalize();
     C_y.normalize();
-    Eigen::Vector3d C_z = C_x.cross(C_y).normalized();
+    Eigen::Vector3d C_z = C_x.cross(C_y);
     C_z.normalize();
 
     // **Step 2: TF 변환 메시지 생성**
@@ -512,43 +508,6 @@ void Define_Normal_Frame()
     normal_rpy(1) = std::asin(-R_C(2,0));           // Pitch
     normal_rpy(2) = std::atan2(R_C(1,0), R_C(0,0)); // Yaw
 
-    // **Step 3: Marker 메시지 생성 (RViz에서 시각화)**
-    auto publish_arrow_marker = [&](Eigen::Vector3d direction, std::string ns, int id, double r, double g, double b) {
-        visualization_msgs::msg::Marker marker;
-        marker.header.frame_id = "world";
-        marker.header.stamp = this->get_clock()->now();
-        marker.ns = ns;
-        marker.id = id;
-        marker.type = visualization_msgs::msg::Marker::ARROW;
-        marker.action = visualization_msgs::msg::Marker::ADD;
-
-        geometry_msgs::msg::Point start, end;
-        start.x = FK_EE_Pos[0];
-        start.y = FK_EE_Pos[1];
-        start.z = FK_EE_Pos[2];
-
-        end.x = start.x + direction.x();
-        end.y = start.y + direction.y();
-        end.z = start.z + direction.z();
-
-        marker.points.push_back(start);
-        marker.points.push_back(end);
-
-        marker.scale.x = 0.02;
-        marker.scale.y = 0.05;
-        marker.scale.z = 0.05;
-        marker.color.a = 1.0;
-        marker.color.r = r;
-        marker.color.g = g;
-        marker.color.b = b;
-
-        Normal_Vector_publisher_->publish(marker);
-    };
-
-    // **법선 좌표계 시각화**
-    publish_arrow_marker(C_x, "Normal_Frame_Cx", 0, 1.0, 0.0, 0.0);  // X축 (빨간색)
-    publish_arrow_marker(C_y, "Normal_Frame_Cy", 1, 0.0, 1.0, 0.0);  // Y축 (녹색)
-    publish_arrow_marker(C_z, "Normal_Frame_Cz", 2, 0.0, 0.0, 1.0);  // Z축 (파란색)
 
 
   std_msgs::msg::Float64MultiArray Normal_rpy;
@@ -685,7 +644,6 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
 
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::TimerBase::SharedPtr timer_visual;
-
 
 
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_; 
