@@ -40,9 +40,9 @@ private:
         {
             char input_char = static_cast<char>(ch);
 
-            if (input_char == 'z') // 'q' 입력 시 종료
+            if (input_char == 't') // 't' 입력 시 종료
             {
-                RCLCPP_INFO(this->get_logger(), "종료 입력(z) 받음. 노드를 종료합니다.");
+                RCLCPP_INFO(this->get_logger(), "종료 입력(t) 받음. 노드를 종료합니다.");
                 rclcpp::shutdown();
                 return;
             }

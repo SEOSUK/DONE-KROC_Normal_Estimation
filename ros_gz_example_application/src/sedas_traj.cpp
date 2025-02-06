@@ -12,6 +12,8 @@
 #include <ncurses.h> // ncurses 헤더
 #include "sedas_rot.hpp"
 #include <geometry_msgs/msg/wrench_stamped.hpp>
+#include "ButterworthFilter.hpp"
+#include "FilteredVector.hpp"
 
 using namespace std::chrono_literals;
 
@@ -23,7 +25,8 @@ class sedas_traj : public rclcpp::Node
   public:
     sedas_traj()
       : Node("sedas_traj"), 
-      count_(0)
+      count_(0),
+      rpy_cmd_filter(3, 0.1, 0.01) // FilteredVector 초기화
     {      
       // QoS 설정
       rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(10))
@@ -74,9 +77,9 @@ class sedas_traj : public rclcpp::Node
     void data_publisher()
     {
       std_msgs::msg::Float64MultiArray drone_cmd;
-      drone_cmd.data.push_back(EE_xyz_position_cmd[0]);
+      drone_cmd.data.push_back(EE_xyz_position_cmd[0]+1);
       drone_cmd.data.push_back(EE_xyz_position_cmd[1]);
-      drone_cmd.data.push_back(EE_xyz_position_cmd[2]);
+      drone_cmd.data.push_back(EE_xyz_position_cmd[2]+0.5);
       drone_cmd.data.push_back(EE_rpy_position_cmd[0]);
       drone_cmd.data.push_back(EE_rpy_position_cmd[1]);
       drone_cmd.data.push_back(EE_rpy_position_cmd[2]);
@@ -86,42 +89,38 @@ class sedas_traj : public rclcpp::Node
     }
 
 
-    void traj_gen()
-    {
-      // if (External_force_sensor_meas.norm() < 0.01 
-      //     || EE_lin_vel.norm() < 0.01) {
-      //     // 접촉이 없는 경우, 혹은 속도가 빠르지 않은 경우
-
-      //     drone_xyz_position_cmd += drone_xyz_vel_cmd * 0.01;
-
-      // }
-      // else
-      // {
-      // //  orientation command를 align 시키기
-      //     R_B2G = get_rotation_matrix(Normal_rpy_angle[0], Normal_rpy_angle[1], Normal_rpy_angle[2]);
-        
-      // //  drone_xyz_vel_cmd는 이미 Normal Frame 기준 속도임
-      //   Eigen::Vector3d vel_normal = drone_xyz_vel_cmd;
-      
-      //   // 🔹 C_x 방향 성분 제거
-      //   vel_normal(0) = 0.0;  // 법선 방향 속도 제거
-
-      //   // 🔹 다시 Global Frame으로 변환
-      //   Eigen::Vector3d vel_filtered = R_B2G * vel_normal;  
-
-      //   // 🔹 Global Frame에서 최종 위치 업데이트
-      //   drone_xyz_position_cmd += vel_filtered * 0.01;
-
-
-
-      // }
-          EE_xyz_position_cmd += EE_xyz_vel_cmd * 0.01;
-          EE_rpy_position_cmd += EE_rpy_vel_cmd * 0.01;
-
-//      TODO    drone_rpy_position_cmd = drone_xyz_position_cmd;
-      RCLCPP_INFO(this->get_logger(), "EE_xyz_position_cmd [%lf] [%lf] [%lf]", EE_xyz_position_cmd[0], EE_xyz_position_cmd[1], EE_xyz_position_cmd[2]);    
-
+void traj_gen()
+{
+    if (External_force_sensor_meas.norm() < 0.01 
+        || EE_lin_vel.norm() < 0.01) {
+        // 접촉이 없거나 속도가 낮은 경우: 기존 방식 유지
+        EE_xyz_position_cmd += EE_xyz_vel_cmd * 0.01;
+        EE_rpy_position_cmd += EE_rpy_vel_cmd * 0.01;
+      RCLCPP_INFO(this->get_logger(), "Not");
     }
+    else
+    {
+        // 1️⃣ Normal Frame의 3D 회전 행렬 계산 (Roll, Pitch, Yaw 모두 고려)
+        Eigen::Matrix3d R_N2G = get_rotation_matrix(Normal_rpy_angle[0], Normal_rpy_angle[1], Normal_rpy_angle[2]);
+
+        // 2️⃣ Normal Frame 기준 속도 변환
+        Eigen::Vector3d vel_normal = drone_xyz_vel_cmd;  // drone_xyz_vel_cmd는 이미 Normal Frame 기준 속도
+
+        // 🔹 특정 축 방향 성분 제거 가능 (예: X 방향 제거)
+        vel_normal(1) = 0.1;
+
+        // 3️⃣ Global Frame으로 변환
+        Eigen::Vector3d vel_filtered = R_N2G * vel_normal;
+
+        // 4️⃣ Global Frame에서 최종 위치 업데이트
+        EE_xyz_position_cmd += vel_filtered * 0.01;
+      RCLCPP_INFO(this->get_logger(), "Contact ");
+
+        // 5️⃣ End-Effector의 Orientation (RPY)도 Normal Frame과 일치
+        EE_rpy_position_cmd = rpy_cmd_filter.apply(Normal_rpy_angle);  // EE의 Roll, Pitch, Yaw를 Normal Frame과 동일하게 설정
+    }
+}
+
 
 
 
@@ -169,11 +168,11 @@ class sedas_traj : public rclcpp::Node
             {
                 EE_xyz_vel_cmd[2] -= 0.1;
             }
-            else if (input_char == 'f')
+            else if (input_char == 'z')
             {
                 EE_rpy_vel_cmd[2] += 0.1;
             }
-            else if (input_char == 'g')
+            else if (input_char == 'c')
             {
                 EE_rpy_vel_cmd[2] -= 0.1;
             }
@@ -269,6 +268,10 @@ class sedas_traj : public rclcpp::Node
     double l2 = 0.2;
     double l3 = 0.2;
     double external_force_norm = 0;
+
+
+
+  FilteredVector rpy_cmd_filter;
 
 
 };

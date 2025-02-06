@@ -60,12 +60,14 @@ class sedas_rviz : public rclcpp::Node
       FK_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
     "/manipulator/FK", 10);
 
+
+
       // Joint EE Subscriber
       joint_EE_torque_subscriber_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
           "/force_torque_EE", 10,  // Topic name and QoS depth
           std::bind(&sedas_rviz::jointEE_torque_Callback, this, std::placeholders::_1));
 
-      drone_cmd_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+      EE_cmd_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
           "/manipulator/EE_cmd", 10,  // Topic name and QoS depth
           std::bind(&sedas_rviz::EE_cmd_Callback, this, std::placeholders::_1));
 
@@ -85,6 +87,8 @@ class sedas_rviz : public rclcpp::Node
       Normal_rpy_angle_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
     "/Normal_Vector_rpy_angle", 10);
 
+      obstacle_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>(
+      "/obstacle_marker", 10);
 
 
       timer_ = this->create_wall_timer(
@@ -108,6 +112,8 @@ class sedas_rviz : public rclcpp::Node
       if(contact_Flag) Define_Normal_Frame();
       else Remove_Normal_Frame();
       EE_cmd_publisher();
+      obstacle_visualizer();
+
       data_publisher();
     }
 
@@ -190,8 +196,6 @@ void EE_cmd_publisher()
     FK_EE_Pos[0] = p_E[0];
     FK_EE_Pos[1] = p_E[1];
     FK_EE_Pos[2] = p_E[2];
-
-    RCLCPP_INFO(this->get_logger(), "FK_EE_Pos [%lf] [%lf] [%lf]", FK_EE_Pos[0], FK_EE_Pos[1], FK_EE_Pos[2]);    
 
 
     // Global 기준 r, p, y angle 추출
@@ -465,9 +469,11 @@ void EE_cmd_publisher()
     // Estimated_normal_Vector: Estimated_normal_Vector
     double alpha = (External_force_sensor_meas_global.dot(EE_lin_vel)) / (EE_lin_vel.dot(EE_lin_vel));
     Estimated_normal_Vector = External_force_sensor_meas_global -  alpha * EE_lin_vel;
-    Estimated_normal_Vector = Estimated_normal_Vector.normalized();
 
 
+//    Estimated_normal_Vector = Estimated_normal_Vector.normalized();
+    Estimated_normal_Vector = External_force_sensor_meas_global;
+    Estimated_normal_Vector[2] = 0;              // IF wanna set 3dof, delete
     auto marker = visualization_msgs::msg::Marker();
     marker.header.frame_id = "world";
     marker.header.stamp = this->get_clock()->now();
@@ -560,7 +566,6 @@ void Define_Normal_Frame()
 
   Normal_rpy_angle_publisher_->publish(Normal_rpy);
 
-  RCLCPP_INFO(this->get_logger(), "tf publishing");
 }
 
 void Remove_Normal_Frame()
@@ -593,6 +598,64 @@ void Remove_Normal_Frame()
       contact_Flag = false;
 
   }
+
+  void obstacle_visualizer()
+  {
+    // TODO: rviz에 속이 빈 원기둥(파이프) 시각화하기
+
+    visualization_msgs::msg::Marker outer_cylinder;
+    visualization_msgs::msg::Marker inner_cylinder;
+
+    // 공통 설정
+    outer_cylinder.header.frame_id = inner_cylinder.header.frame_id = "world";
+    outer_cylinder.header.stamp = inner_cylinder.header.stamp = this->now();
+    outer_cylinder.ns = inner_cylinder.ns = "obstacle";
+    outer_cylinder.action = inner_cylinder.action = visualization_msgs::msg::Marker::ADD;
+    outer_cylinder.type = inner_cylinder.type = visualization_msgs::msg::Marker::CYLINDER;
+
+    // 위치 설정 (두 개의 원기둥이 동일한 위치에 있어야 함)
+    outer_cylinder.pose.position.x = inner_cylinder.pose.position.x = 3.0;
+    outer_cylinder.pose.position.y = inner_cylinder.pose.position.y = 1.0;
+    outer_cylinder.pose.position.z = inner_cylinder.pose.position.z = 2.0;
+    outer_cylinder.pose.orientation.x = inner_cylinder.pose.orientation.x = 0.0;
+    outer_cylinder.pose.orientation.y = inner_cylinder.pose.orientation.y = 0.0;
+    outer_cylinder.pose.orientation.z = inner_cylinder.pose.orientation.z = 0.0;
+    outer_cylinder.pose.orientation.w = inner_cylinder.pose.orientation.w = 1.0;
+
+    // 크기 설정
+    double outer_radius = 2.0;  // 외부 원기둥 반지름
+    double inner_radius = 1.5;  // 내부 원기둥 반지름 (외부보다 작아야 함)
+    double height = 4.0;        // 원기둥 높이
+
+    outer_cylinder.scale.x = outer_radius * 2;
+    outer_cylinder.scale.y = outer_radius * 2;
+    outer_cylinder.scale.z = height;
+
+    inner_cylinder.scale.x = inner_radius * 2;
+    inner_cylinder.scale.y = inner_radius * 2;
+    inner_cylinder.scale.z = height + 0.01;  // 내부 원기둥을 살짝 더 키워서 내부 공간이 확실히 보이게 함
+
+    // 색상 설정
+    outer_cylinder.color.r = 0.3;
+    outer_cylinder.color.g = 0.3;
+    outer_cylinder.color.b = 1.0;
+    outer_cylinder.color.a = 0.8;  // 외부 원기둥은 불투명하게
+
+    inner_cylinder.color.r = 0.3;
+    inner_cylinder.color.g = 0.3;
+    inner_cylinder.color.b = 1.0;
+    inner_cylinder.color.a = 0.2;  // 내부 원기둥을 거의 투명하게
+
+    // ID 설정
+    outer_cylinder.id = 0;
+    inner_cylinder.id = 1;
+
+    // 메시지 퍼블리시
+    obstacle_publisher_->publish(outer_cylinder);
+    obstacle_publisher_->publish(inner_cylinder);
+
+  }
+
 
   void data_publish()
   {	// publish!!
@@ -738,13 +801,14 @@ void EE_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr position_subscriber_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_vel_subscriber_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_pos_subscriber_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_cmd_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_EE_torque_subscriber_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr FK_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr Normal_rpy_angle_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Vel_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Force_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr Normal_Vector_publisher_;
-  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr drone_cmd_subscriber_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr obstacle_publisher_;
 
 
 

@@ -119,7 +119,7 @@ install(TARGETS
 
 #SEDAS_TRAJ
 add_executable(sedas_traj src/sedas_traj.cpp)
-target_link_libraries(sedas_traj ${CURSES_LIBRARIES})
+target_link_libraries(sedas_traj ButterworthFilter ${CURSES_LIBRARIES})
 ament_target_dependencies(sedas_traj
  rclcpp
  std_msgs
