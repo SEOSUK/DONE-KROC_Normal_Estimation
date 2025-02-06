@@ -41,7 +41,7 @@ class sedas_traj : public rclcpp::Node
 
 
     drone_cmd_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
-    "/manipulator/drone_cmd", 10);
+    "/manipulator/EE_cmd", 10);
 
     // Joint EE Subscriber
     joint_EE_torque_subscriber_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
@@ -74,9 +74,12 @@ class sedas_traj : public rclcpp::Node
     void data_publisher()
     {
       std_msgs::msg::Float64MultiArray drone_cmd;
-      drone_cmd.data.push_back(drone_xyz_position_cmd[0]);
-      drone_cmd.data.push_back(drone_xyz_position_cmd[1]);
-      drone_cmd.data.push_back(drone_xyz_position_cmd[2]);
+      drone_cmd.data.push_back(EE_xyz_position_cmd[0]);
+      drone_cmd.data.push_back(EE_xyz_position_cmd[1]);
+      drone_cmd.data.push_back(EE_xyz_position_cmd[2]);
+      drone_cmd.data.push_back(EE_rpy_position_cmd[0]);
+      drone_cmd.data.push_back(EE_rpy_position_cmd[1]);
+      drone_cmd.data.push_back(EE_rpy_position_cmd[2]);
 
 
       drone_cmd_publisher_->publish(drone_cmd);
@@ -112,7 +115,11 @@ class sedas_traj : public rclcpp::Node
 
 
       // }
-          drone_xyz_position_cmd += drone_xyz_vel_cmd * 0.01;
+          EE_xyz_position_cmd += EE_xyz_vel_cmd * 0.01;
+          EE_rpy_position_cmd += EE_rpy_vel_cmd * 0.01;
+
+//      TODO    drone_rpy_position_cmd = drone_xyz_position_cmd;
+      RCLCPP_INFO(this->get_logger(), "EE_xyz_position_cmd [%lf] [%lf] [%lf]", EE_xyz_position_cmd[0], EE_xyz_position_cmd[1], EE_xyz_position_cmd[2]);    
 
     }
 
@@ -134,50 +141,60 @@ class sedas_traj : public rclcpp::Node
       // 입력된 키를 문자열로 가져옴
       std::string input = msg->data;
 
-      if (!input.empty()) // 입력 값이 비어있지 않을 경우
-      {
-          char input_char = input[0]; // 문자열의 첫 번째 문자만 사용
+        if (!input.empty()) // 입력 값이 비어있지 않을 경우
+        {
+            char input_char = input[0]; // 문자열의 첫 번째 문자만 사용
 
-          if (input_char == 'w')
+            if (input_char == 'w')
+            {
+                EE_xyz_vel_cmd[0] += 0.1;
+            }
+            else if (input_char == 's')
+            {
+                EE_xyz_vel_cmd[0] -= 0.1;
+            }
+            else if (input_char == 'a')
+            {
+                EE_xyz_vel_cmd[1] += 0.1;
+            }
+            else if (input_char == 'd')
+            {
+                EE_xyz_vel_cmd[1] -= 0.1;
+            }
+            else if (input_char == 'e')
+            {
+                EE_xyz_vel_cmd[2] += 0.1;
+            }
+            else if (input_char == 'q')
+            {
+                EE_xyz_vel_cmd[2] -= 0.1;
+            }
+            else if (input_char == 'f')
+            {
+                EE_rpy_vel_cmd[2] += 0.1;
+            }
+            else if (input_char == 'g')
+            {
+                EE_rpy_vel_cmd[2] -= 0.1;
+            }
+            else if (input_char == 'n' || input_char == 'x')
+            {
+                EE_xyz_vel_cmd[0] = 0;
+                EE_xyz_vel_cmd[1] = 0;
+                EE_xyz_vel_cmd[2] = 0;
+
+                EE_rpy_vel_cmd[0] = 0;
+                EE_rpy_vel_cmd[1] = 0;
+                EE_rpy_vel_cmd[2] = 0;
+            }
+        }
+          else
           {
-              drone_xyz_vel_cmd[0] += 0.1;
-          }
-          else if (input_char == 's')
-          {
-              drone_xyz_vel_cmd[0] -= 0.1;
-          }
-          else if (input_char == 'a')
-          {
-              drone_xyz_vel_cmd[1] += 0.1;
-          }
-          else if (input_char == 'd')
-          {
-              drone_xyz_vel_cmd[1] -= 0.1;
-          }
-          else if (input_char == 'e')
-          {
-              drone_xyz_vel_cmd[2] += 0.1;
-          }
-          else if (input_char == 'q')
-          {
-              drone_xyz_vel_cmd[2] -= 0.1;
-          }
-          else if (input_char == 'x')
-          {
-              drone_xyz_vel_cmd[0] = 0;
-              drone_xyz_vel_cmd[1] = 0;
-              drone_xyz_vel_cmd[2] = 0;
+              RCLCPP_WARN(this->get_logger(), "입력된 키가 없습니다!");
           }
 
-          // 현재 명령 출력
-        //  RCLCPP_INFO(this->get_logger(), "cmd: [%lf] [%lf] [%lf]",
-        //              drone_xyz_vel_cmd[0], drone_xyz_vel_cmd[1], drone_xyz_vel_cmd[2]);
-      }
-      else
-      {
-          RCLCPP_WARN(this->get_logger(), "입력된 키가 없습니다!");
-      }
-  }
+
+    }
 
   void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
   {
@@ -227,6 +244,11 @@ class sedas_traj : public rclcpp::Node
   Eigen::Vector3d drone_rpy_vel_cmd = Eigen::Vector3d::Zero();
   Eigen::Vector3d drone_rpy_normal_vel_cmd = Eigen::Vector3d::Zero();
 
+  Eigen::Vector3d EE_rpy_position_cmd = Eigen::Vector3d::Zero(3);
+  Eigen::Vector3d EE_xyz_position_cmd = Eigen::Vector3d::Zero();
+
+  Eigen::Vector3d EE_xyz_vel_cmd = Eigen::Vector3d::Zero(3);
+  Eigen::Vector3d EE_rpy_vel_cmd = Eigen::Vector3d::Zero();
 
 
   Eigen::Vector3d EE_lin_vel;

@@ -21,6 +21,7 @@
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <iostream>
 #include <std_msgs/msg/float64_multi_array.hpp>  // 다중 float64 배열 퍼블리시
+#include <tf2/LinearMath/Quaternion.h>
 
 using namespace std::chrono_literals;
 
@@ -64,6 +65,11 @@ class sedas_rviz : public rclcpp::Node
           "/force_torque_EE", 10,  // Topic name and QoS depth
           std::bind(&sedas_rviz::jointEE_torque_Callback, this, std::placeholders::_1));
 
+      drone_cmd_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+          "/manipulator/EE_cmd", 10,  // Topic name and QoS depth
+          std::bind(&sedas_rviz::EE_cmd_Callback, this, std::placeholders::_1));
+
+
 
 
 
@@ -93,12 +99,15 @@ class sedas_rviz : public rclcpp::Node
 	    void timer_callback()
     {	//main loop, 100Hz
     // 현재 시간 계산
+      contact_checker();
       Calc_FK();
       Robot_State_Publisher();
       End_Effector_Pos_Vel_Publisher();
       End_Effector_Force_Publisher();
       Normal_vector_estimation_and_visual_Publisher();
-      Define_Normal_Frame();
+      if(contact_Flag) Define_Normal_Frame();
+      else Remove_Normal_Frame();
+      EE_cmd_publisher();
       data_publisher();
     }
 
@@ -114,6 +123,37 @@ class sedas_rviz : public rclcpp::Node
 
     FK_publisher_->publish(FK_meas);
     }
+
+
+void EE_cmd_publisher()
+{
+    static std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_ = 
+        std::make_shared<tf2_ros::TransformBroadcaster>(this);
+
+    // **Step 1: TF 메시지 생성**
+    geometry_msgs::msg::TransformStamped transform_drone;
+    transform_drone.header.stamp = this->get_clock()->now();
+    transform_drone.header.frame_id = "world";      // 기준 좌표계
+    transform_drone.child_frame_id = "EE_cmd";  // 드론 좌표계
+
+    // **Step 2: 위치 설정 (Translation)**
+    transform_drone.transform.translation.x = EE_global_xyz_cmd[0];
+    transform_drone.transform.translation.y = EE_global_xyz_cmd[1];
+    transform_drone.transform.translation.z = EE_global_xyz_cmd[2];
+
+    // **Step 3: RPY -> Quaternion 변환**
+    tf2::Quaternion q;
+    q.setRPY(EE_body_rpy_cmd[0], EE_body_rpy_cmd[1], EE_body_rpy_cmd[2]); // Roll, Pitch, Yaw
+
+    transform_drone.transform.rotation.x = q.x();
+    transform_drone.transform.rotation.y = q.y();
+    transform_drone.transform.rotation.z = q.z();
+    transform_drone.transform.rotation.w = q.w();
+
+    // **Step 4: TF Broadcast**
+    tf_broadcaster_->sendTransform(transform_drone);
+}
+
 
     void Calc_FK()
     { 
@@ -150,6 +190,9 @@ class sedas_rviz : public rclcpp::Node
     FK_EE_Pos[0] = p_E[0];
     FK_EE_Pos[1] = p_E[1];
     FK_EE_Pos[2] = p_E[2];
+
+    RCLCPP_INFO(this->get_logger(), "FK_EE_Pos [%lf] [%lf] [%lf]", FK_EE_Pos[0], FK_EE_Pos[1], FK_EE_Pos[2]);    
+
 
     // Global 기준 r, p, y angle 추출
     FK_EE_Pos[3] = std::atan2(R_E(2, 1), R_E(2, 2));
@@ -516,7 +559,40 @@ void Define_Normal_Frame()
   Normal_rpy.data.push_back(normal_rpy(2));
 
   Normal_rpy_angle_publisher_->publish(Normal_rpy);
+
+  RCLCPP_INFO(this->get_logger(), "tf publishing");
 }
+
+void Remove_Normal_Frame()
+{
+    geometry_msgs::msg::TransformStamped transform_normal;
+    transform_normal.header.stamp = this->get_clock()->now();
+    transform_normal.header.frame_id = "world";
+    transform_normal.child_frame_id = "normal_frame"; // 같은 ID를 유지
+    
+    // 좌표 원점으로 이동
+    transform_normal.transform.translation.x = 0;
+    transform_normal.transform.translation.y = 0;
+    transform_normal.transform.translation.z = 0;
+    
+    // 단위 Quaternion으로 설정 (즉, 회전 없음)
+    transform_normal.transform.rotation.x = 0;
+    transform_normal.transform.rotation.y = 0;
+    transform_normal.transform.rotation.z = 0;
+    transform_normal.transform.rotation.w = 1;
+
+    tf_broadcaster_->sendTransform(transform_normal);
+}
+
+
+  void contact_checker()
+  {
+    if(External_force_sensor_meas_global.norm() > 0.01 && EE_lin_vel.norm() > 0.01)
+      contact_Flag = true;
+    else
+      contact_Flag = false;
+
+  }
 
   void data_publish()
   {	// publish!!
@@ -641,6 +717,17 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
     External_force_sensor_meas_global = Rot_D2G(External_force_sensor_meas, Tw3_Pos[3], Tw3_Pos[4], Tw3_Pos[5]);
 }
 
+void EE_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+{
+  for (int i = 0; i<3; i++)
+  {
+  EE_global_xyz_cmd[i] = msg->data[i];
+  }
+  EE_body_rpy_cmd[0] = msg->data[3];
+  EE_body_rpy_cmd[1] = msg->data[4];
+  EE_body_rpy_cmd[2] = msg->data[5];
+}
+
 
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::TimerBase::SharedPtr timer_visual;
@@ -657,7 +744,7 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Vel_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Force_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr Normal_Vector_publisher_;
-
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr drone_cmd_subscriber_;
 
 
 
@@ -750,7 +837,8 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
   Eigen::Vector3d p_E;
   Eigen::Matrix3d R_E;
 
-  
+  Eigen::Vector3d EE_global_xyz_cmd;
+  Eigen::Vector3d EE_body_rpy_cmd;
   
 
 
@@ -770,6 +858,7 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
     double l2 = 0.2;
     double l3 = 0.2;
 
+    bool contact_Flag = false;
 
 
 };

@@ -101,8 +101,8 @@ class ign_pubsub : public rclcpp::Node
 
 
       drone_cmd_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-          "/manipulator/drone_cmd", 10,  // Topic name and QoS depth
-          std::bind(&ign_pubsub::drone_cmd_Callback, this, std::placeholders::_1));
+          "/manipulator/EE_cmd", 10,  // Topic name and QoS depth
+          std::bind(&ign_pubsub::EE_cmd_Callback, this, std::placeholders::_1));
 
 
 
@@ -111,11 +111,11 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 30, 120, 500;
+    body_xyz_P.diagonal() << 30, 30, 500;
     body_xyz_I.diagonal() << 0., 0., 0.;
-    body_xyz_D.diagonal() << 5, 10, 50;
-    body_rpy_P.diagonal() << 70, 70, 30;
-    body_rpy_D.diagonal() << 7, 7, 3;
+    body_xyz_D.diagonal() << 5, 5, 50;
+    body_rpy_P.diagonal() << 100, 100, 30;
+    body_rpy_D.diagonal() << 10, 10, 3;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -160,7 +160,7 @@ void PID_controller()
 
 
 
-  body_rpy_cmd = Rot_G2D(global_rpy_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
+  // body_rpy_cmd = Rot_G2D(global_rpy_cmd, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
 
   body_rpy_error = body_rpy_cmd - body_rpy_meas;
   // Wrapping to [-π, π] range
@@ -178,24 +178,39 @@ void PID_controller()
 }
 
 
-
 void set_traj()
 {
-    double amplitude = 20.0 * M_PI / 180.0; // 20도 → 라디안 변환
-    double period = 3.0; // 주기 3초
-    double omega = 2.0 * M_PI / period; // 각주파수 (rad/s)
-    
-    // 현재 시간 (초) 계산
-    double t = this->get_clock()->now().seconds();
-  //  global_rpy_cmd[0] = M_PI / 6;
-  //  global_rpy_cmd[1] = M_PI / 6;
-  //  global_rpy_cmd[2] = M_PI / 6;
+  const Eigen::Vector3d rod_offset(0.4, 0.0, 0.2);
+  
+  //TODO: IK Solve
+  //Known: global_EE_xyz_cmd[0, 1, 2]
+  //       body_EE_rpy_cmd[0, 1, 2]
+
+  //Need:  global_xyz_cmd[0, 1, 2]
+  //       body_rpy_cmd[0, 1, 2]
+
+      // **Step 2: RPY에서 회전 행렬 생성 (R = Rz * Ry * Rx)**
+    double roll = body_EE_rpy_cmd[0];
+    double pitch = body_EE_rpy_cmd[1];
+    double yaw = body_EE_rpy_cmd[2];
+
+    Eigen::Matrix3d R_EE;
+    R_EE = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
+           Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+           Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX());
+
+    // **Step 3: Rod의 오프셋을 고려하여 드론의 목표 위치 역계산**
+    global_xyz_cmd = global_EE_xyz_cmd - (R_EE * rod_offset);
 
 
-    // 사인 함수 적용
-  //  joint_angle_cmd[0] = M_PI/6;
-  //  joint_angle_cmd[1] = 0;
-  //  joint_angle_cmd[2] = 0;
+
+    // **Step 4: 드론의 목표 자세 = End-Effector의 목표 자세**
+    body_rpy_cmd = body_EE_rpy_cmd;
+
+    body_rpy_cmd[0] = body_rpy_cmd.x();
+    body_rpy_cmd[1] = body_rpy_cmd.y();
+    body_rpy_cmd[2] = body_rpy_cmd.z();
+
 
 }
 
@@ -337,11 +352,11 @@ void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 {
 
     // link_yaw의 id는 7로 고정
-    const int link_yaw_id = 1;
+    const int link_drone = 1;
 
-    if (link_yaw_id < msg->poses.size())
+    if (link_drone < msg->poses.size())
     {
-        const auto &pose = msg->poses[link_yaw_id];
+        const auto &pose = msg->poses[link_drone];
       global_xyz_meas[0] = pose.position.x;
       global_xyz_meas[1] = pose.position.y;
       global_xyz_meas[2] = pose.position.z;                        
@@ -350,6 +365,8 @@ void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
     {
         RCLCPP_WARN(this->get_logger(), "link_yaw id (1) is out of bounds in PoseArray.");
     }
+
+
 
 
 }
@@ -396,15 +413,15 @@ void FK_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
   }
 }
 
-void drone_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
-{
+void EE_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+{ // 이제부턴 드론 아니고 엔드이펙터임.
   for (int i = 0; i<3; i++)
   {
-  global_xyz_cmd[i] = msg->data[i];
+  global_EE_xyz_cmd[i] = msg->data[i];
   }
-  // body_rpy_cmd[0] = msg->data[3];
-  // body_rpy_cmd[1] = msg->data[4];
-  // global_rpy_cmd[2] = msg->data[5];
+  body_EE_rpy_cmd[0] = msg->data[3];
+  body_EE_rpy_cmd[1] = msg->data[4];
+  body_EE_rpy_cmd[2] = msg->data[5];
 }
 
 
@@ -483,6 +500,9 @@ void set_state_and_dot()
 
 
   Eigen::Vector3d global_xyz_cmd = Eigen::Vector3d::Zero();
+  Eigen::Vector3d body_EE_rpy_cmd = Eigen::Vector3d::Zero();
+  Eigen::Vector3d global_EE_xyz_cmd = Eigen::Vector3d::Zero();
+  
   Eigen::Vector3d global_xyz_error;
   Eigen::Vector3d global_xyz_error_integral;
   Eigen::Vector3d global_xyz_error_d;
