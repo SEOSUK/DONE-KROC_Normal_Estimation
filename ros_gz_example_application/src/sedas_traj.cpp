@@ -99,38 +99,57 @@ class sedas_traj : public rclcpp::Node
 void traj_gen()
 {
   time_cnt+= 0.01;
-  if(time_cnt > 5) EE_xyz_vel_cmd[0] = 0.1;
-    if (External_force_sensor_meas.norm() < 0.01 
-        || EE_lin_vel.norm() < 0.01) {
-        // 접촉이 없거나 속도가 낮은 경우: 기존 방식 유지
+  // if(time_cnt > 5) EE_xyz_vel_cmd[0] = 0.1;
+  if (time_cnt > 5 && time_cnt < 8) 
+  {
+    EE_xyz_vel_cmd[0] = 0.3;
+  }
+  else EE_xyz_vel_cmd[0] = 0.;
+
+
+  if (time_cnt > 10 && time_cnt < 25) 
+  {
+    EE_xyz_vel_cmd[1] = 0.2;
+  }
+  else if (time_cnt > 25 && time_cnt < 40) 
+  {
+    EE_xyz_vel_cmd[1] = -0.2;
+  }
+  else EE_xyz_vel_cmd[1] = 0.;
+
+
+    // if (External_force_sensor_meas.norm() < 0.01 
+    //     || EE_lin_vel.norm() < 0.01) {
+    //     // 접촉이 없거나 속도가 낮은 경우: 기존 방식 유지
+    //     EE_xyz_position_cmd += EE_xyz_vel_cmd * 0.01;
+    //     EE_rpy_position_cmd += EE_rpy_vel_cmd * 0.01;
+    //   RCLCPP_INFO(this->get_logger(), "Not");
+    // }
+    // else
+    // {
+    //     // 1️⃣ Normal Frame의 3D 회전 행렬 계산 (Roll, Pitch, Yaw 모두 고려)
+    //     Eigen::Matrix3d R_N2G = get_rotation_matrix(Normal_rpy_angle[0], Normal_rpy_angle[1], Normal_rpy_angle[2]);
+
+    //     // 2️⃣ Normal Frame 기준 속도 변환
+    //     Eigen::Vector3d vel_normal = drone_xyz_vel_cmd;  // drone_xyz_vel_cmd는 이미 Normal Frame 기준 속도
+
+          
+    //         vel_normal(1) = 0.1;
+
+
+    //     // 3️⃣ Global Frame으로 변환
+    //     Eigen::Vector3d vel_filtered = R_N2G * vel_normal;
+
+    //     // 4️⃣ Global Frame에서 최종 위치 업데이트
+    //     EE_xyz_position_cmd += vel_filtered * 0.01;
+    //   RCLCPP_INFO(this->get_logger(), "Contact ");
+
+    //     // 5️⃣ End-Effector의 Orientation (RPY)도 Normal Frame과 일치
+    //     EE_rpy_position_cmd = rpy_cmd_filter.apply(Normal_rpy_angle);  // EE의 Roll, Pitch, Yaw를 Normal Frame과 동일하게 설정
+    // }
+
         EE_xyz_position_cmd += EE_xyz_vel_cmd * 0.01;
         EE_rpy_position_cmd += EE_rpy_vel_cmd * 0.01;
-      RCLCPP_INFO(this->get_logger(), "Not");
-    }
-    else
-    {
-        // 1️⃣ Normal Frame의 3D 회전 행렬 계산 (Roll, Pitch, Yaw 모두 고려)
-        Eigen::Matrix3d R_N2G = get_rotation_matrix(Normal_rpy_angle[0], Normal_rpy_angle[1], Normal_rpy_angle[2]);
-
-        // 2️⃣ Normal Frame 기준 속도 변환
-        Eigen::Vector3d vel_normal = drone_xyz_vel_cmd;  // drone_xyz_vel_cmd는 이미 Normal Frame 기준 속도
-
-            vel_normal(1) = 0.2;
-            vel_normal(2) = 0.1;
-
-        // 3️⃣ Global Frame으로 변환
-        Eigen::Vector3d vel_filtered = R_N2G * vel_normal;
-
-        // 4️⃣ Global Frame에서 최종 위치 업데이트
-        EE_xyz_position_cmd += vel_filtered * 0.01;
-      RCLCPP_INFO(this->get_logger(), "Contact ");
-
-        // 5️⃣ End-Effector의 Orientation (RPY)도 Normal Frame과 일치
-        EE_rpy_position_cmd = rpy_cmd_filter.apply(Normal_rpy_angle);  // EE의 Roll, Pitch, Yaw를 Normal Frame과 동일하게 설정
-    }
-
-        // EE_xyz_position_cmd += EE_xyz_vel_cmd * 0.01;
-        // EE_rpy_position_cmd += EE_rpy_vel_cmd * 0.01;
 
 
 }

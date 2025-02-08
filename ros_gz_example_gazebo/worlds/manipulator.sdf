@@ -142,14 +142,14 @@
 
 
 <model name="cylinder">
-    <pose>0.5 -1 0 0 0 0</pose>
+    <pose>0.5 3.5 0 0 0 -1.57</pose>
     <static>true</static>  <!-- 물리 적용 (true면 고정됨) -->
     <link name="cylinder_link">
         <visual name="cylinder_visual">
             <geometry>
                 <mesh>
-                    <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/cylinder.STL.stl</uri>
-                    <scale>0.1 0.1 0.1</scale>
+                    <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/deg20.STL.stl</uri>
+                    <scale>0.01 0.01 0.01</scale>
                 </mesh>
             </geometry>
             <material>
@@ -163,8 +163,8 @@
         <collision name="cylinder_collision">
             <geometry>
                 <mesh>
-                    <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/cylinder.STL.stl</uri>
-                    <scale>0.1 0.1 0.1</scale>
+                    <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/deg20.STL.stl</uri>
+                    <scale>0.01 0.01 0.01</scale>
                 </mesh>
             </geometry>
             <surface>
@@ -176,8 +176,8 @@
                 </contact>
                 <friction>
                     <ode>
-                        <mu>0.3</mu>   <!-- 마찰 계수 증가 (미끄러짐 방지) -->
-                        <mu2>0.3</mu2>
+                        <mu>0.01</mu>   <!-- 마찰 계수 증가 (미끄러짐 방지) -->
+                        <mu2>0.01</mu2>
                     </ode>
                 </friction>
             </surface>

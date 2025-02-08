@@ -37,7 +37,7 @@ public:
 
         // Float64MultiArray 메시지 구독
         subscription_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-            "/kroc_data", 10,
+            "/Normal_Vector", 10,
             std::bind(&KrocCSVLogger::callback, this, std::placeholders::_1));
 
         RCLCPP_INFO(this->get_logger(), "Logging to CSV: %s", output_csv_.c_str());
@@ -59,20 +59,24 @@ private:
 
     void callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
     {
-        if (msg->data.size() < 4)
-        {
-            RCLCPP_WARN(this->get_logger(), "Received data has insufficient size: %zu", msg->data.size());
-            return;
-        }
+        // 배열 크기에 따라 기본값 설정
+        double data_0 = (msg->data.size() > 0) ? msg->data[0] : 0.0;
+        double data_1 = (msg->data.size() > 1) ? msg->data[1] : 0.0;
+        double data_2 = (msg->data.size() > 2) ? msg->data[2] : 0.0;
+        double data_3 = (msg->data.size() > 3) ? msg->data[3] : 0.0;
 
+        // 현재 시간 기록
         auto timestamp = this->now().nanoseconds();
+
+        // CSV 파일에 데이터 기록
         csv_file_ << timestamp << "," 
-                  << msg->data[0] << "," 
-                  << msg->data[1] << "," 
-                  << msg->data[2] << "," 
-                  << msg->data[3] << "\n";
-        csv_file_.flush();
+                << data_0 << "," 
+                << data_1 << "," 
+                << data_2 << "," 
+                << data_3 << "\n";
+        csv_file_.flush(); // 즉시 저장
     }
+
 };
 
 // CTRL+C 신호 감지 후 안전 종료
