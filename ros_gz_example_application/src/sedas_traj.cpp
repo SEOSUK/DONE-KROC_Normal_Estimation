@@ -107,11 +107,11 @@ void traj_gen()
   else EE_xyz_vel_cmd[0] = 0.;
 
 
-  if (time_cnt > 10 && time_cnt < 25) 
+  if (time_cnt > 10 && time_cnt < 20) 
   {
     EE_xyz_vel_cmd[1] = 0.2;
   }
-  else if (time_cnt > 25 && time_cnt < 40) 
+  else if (time_cnt > 20 && time_cnt < 30) 
   {
     EE_xyz_vel_cmd[1] = -0.2;
   }
