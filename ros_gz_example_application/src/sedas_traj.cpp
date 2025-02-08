@@ -26,7 +26,7 @@ class sedas_traj : public rclcpp::Node
     sedas_traj()
       : Node("sedas_traj"), 
       count_(0),
-      rpy_cmd_filter(3, 1, 0.01), // FilteredVector 초기화
+      rpy_cmd_filter(3, 1., 0.01), // FilteredVector 초기화
       xyz_cmd_filter(3, 1, 0.01) // FilteredVector 초기화
     {      
       // QoS 설정

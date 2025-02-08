@@ -176,8 +176,8 @@
                 </contact>
                 <friction>
                     <ode>
-                        <mu>0.3</mu>   <!-- 마찰 계수 증가 (미끄러짐 방지) -->
-                        <mu2>0.3</mu2>
+                        <mu>0.4</mu>   <!-- 마찰 계수 증가 (미끄러짐 방지) -->
+                        <mu2>0.4</mu2>
                     </ode>
                 </friction>
             </surface>
