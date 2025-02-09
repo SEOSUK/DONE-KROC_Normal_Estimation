@@ -476,8 +476,8 @@ void EE_cmd_publisher()
     Estimated_normal_Vector = External_force_sensor_meas_global -  alpha * EE_lin_vel;
 
 
-    Estimated_normal_Vector = Estimated_normal_Vector.normalized();
-    // Estimated_normal_Vector = External_force_sensor_meas_global;
+    // Estimated_normal_Vector = Estimated_normal_Vector.normalized();
+    Estimated_normal_Vector = External_force_sensor_meas_global;
 
 
 

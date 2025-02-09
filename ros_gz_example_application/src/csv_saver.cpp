@@ -6,11 +6,11 @@
 
 namespace fs = std::filesystem;
 
-class KrocCSVLogger : public rclcpp::Node
+class FilteredCSVLogger : public rclcpp::Node
 {
 public:
-    KrocCSVLogger(const std::string &output_csv)
-        : Node("kroc_csv_logger"), output_csv_(output_csv), header_written_(false)
+    FilteredCSVLogger(const std::string &output_csv)
+        : Node("filtered_csv_logger"), output_csv_(output_csv)
     {
         fs::path dir_path = fs::path(output_csv_).parent_path();
         if (!fs::exists(dir_path))
@@ -28,21 +28,17 @@ public:
 
         if (fs::file_size(output_csv_) == 0)
         {
-            header_written_ = false;
-        }
-        else
-        {
-            header_written_ = true;
+            write_header();
         }
 
         subscription_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
             "/kroc_data", 10,
-            std::bind(&KrocCSVLogger::callback, this, std::placeholders::_1));
+            std::bind(&FilteredCSVLogger::callback, this, std::placeholders::_1));
 
         RCLCPP_INFO(this->get_logger(), "Logging to CSV: %s", output_csv_.c_str());
     }
 
-    ~KrocCSVLogger()
+    ~FilteredCSVLogger()
     {
         if (csv_file_.is_open())
         {
@@ -55,26 +51,18 @@ private:
     std::string output_csv_;
     std::ofstream csv_file_;
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr subscription_;
-    bool header_written_;
+
+    void write_header()
+    {
+        csv_file_ << "Timestamp,Data_0,Data_1,Data_2,Data_3,Data_4,Data_5,Data_6" << std::endl;
+    }
 
     void callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
     {
-        if (msg->data.empty())
+        if (msg->data.size() < 7)
         {
-            RCLCPP_WARN(this->get_logger(), "Received empty data array.");
+            RCLCPP_WARN(this->get_logger(), "Received invalid data (size < 7), ignoring.");
             return;
-        }
-
-        if (!header_written_)
-        {
-            csv_file_ << "Timestamp";
-            for (size_t i = 0; i < msg->data.size(); ++i)
-            {
-                csv_file_ << ",Data_" << i;
-            }
-            csv_file_ << "\n";
-            csv_file_.flush();
-            header_written_ = true;
         }
 
         auto timestamp = this->now().nanoseconds();
@@ -83,25 +71,25 @@ private:
         {
             csv_file_ << "," << value;
         }
-        csv_file_ << "\n";
+        csv_file_ << std::endl;
         csv_file_.flush();
     }
 };
 
 void signal_handler(int signum)
 {
-    RCLCPP_INFO(rclcpp::get_logger("kroc_csv_logger"), "Caught signal %d, shutting down.", signum);
+    RCLCPP_INFO(rclcpp::get_logger("filtered_csv_logger"), "Caught signal %d, shutting down.", signum);
     rclcpp::shutdown();
 }
 
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-    std::string default_csv_path = "/home/mrlseuk/kroc_data/kroc_data.csv";
+    std::string default_csv_path = "/home/mrlseuk/kroc_data/kroc_filtered_data.csv";
     std::string csv_path = (argc >= 2) ? argv[1] : default_csv_path;
 
     std::signal(SIGINT, signal_handler);
-    auto node = std::make_shared<KrocCSVLogger>(csv_path);
+    auto node = std::make_shared<FilteredCSVLogger>(csv_path);
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

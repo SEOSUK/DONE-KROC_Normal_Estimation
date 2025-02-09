@@ -299,13 +299,19 @@ void data_publish()
   commanded_publsiher_->publish(commanded_input);
 
 
-  std_msgs::msg::Float64MultiArray kroc_data;
-  kroc_data.data.push_back(FK_meas[0]);
-  kroc_data.data.push_back(FK_meas[1]);
-  kroc_data.data.push_back(FK_meas[2]);
-  kroc_data.data.push_back(body_rpy_cmd[2]);
-  kroc_data.data.push_back(body_rpy_meas[2]);
-  kroc_publisher_->publish(kroc_data);
+  if(External_force_sensor_meas.norm() > 0.01) contact_flag = true;
+
+  if(contact_flag){
+    std_msgs::msg::Float64MultiArray kroc_data;
+    kroc_data.data.push_back(-100);
+    kroc_data.data.push_back(FK_meas[0]);
+    kroc_data.data.push_back(FK_meas[1]);
+    kroc_data.data.push_back(FK_meas[2]);
+    kroc_data.data.push_back(body_rpy_cmd[2]);
+    kroc_data.data.push_back(body_rpy_meas[2]);
+    kroc_data.data.push_back(100);
+    kroc_publisher_->publish(kroc_data);
+    }
 }
  
 void joint_state_subsciber_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -591,7 +597,7 @@ void set_state_and_dot()
     double l2 = 0.2;
     double l3 = 0.2;
 
-
+  double contact_flag = false;
 
   FilteredVector state_filter;
   FilteredVector torque_measured_filter;
