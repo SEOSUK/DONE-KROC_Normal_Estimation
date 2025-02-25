@@ -24,7 +24,7 @@
             <pose relative_to="link_drone">0 0 0 0 0 0.785398</pose>
             <geometry>
             <mesh>
-            <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/palletrone.dae</uri>
+            <uri>package://ros_gz_example_description/models/manipulator/meshes/palletrone.dae</uri>
             <scale>0.00085 0.00085 0.00085</scale>
             </mesh>
             </geometry>

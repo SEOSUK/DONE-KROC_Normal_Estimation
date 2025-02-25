@@ -148,7 +148,7 @@
         <visual name="cylinder_visual">
             <geometry>
                 <mesh>
-                    <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/cylinder.STL.stl</uri>
+                    <uri>package://ros_gz_example_description/models/manipulator/meshes/cylinder.STL.stl</uri>
                     <scale>0.1 0.1 0.1</scale>
                 </mesh>
             </geometry>
@@ -163,7 +163,7 @@
         <collision name="cylinder_collision">
             <geometry>
                 <mesh>
-                    <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/cylinder.STL.stl</uri>
+                    <uri>package://ros_gz_example_description/models/manipulator/meshes/cylinder.STL.stl</uri>
                     <scale>0.1 0.1 0.1</scale>
                 </mesh>
             </geometry>
