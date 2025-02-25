@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot name="cylinder">
+    <link name="cylinder_link">
+        <visual>
+            <geometry>
+                <mesh filename="package://ros_gz_example_description/models/manipulator/meshes/cylinder.STL.stl"/>
+            </geometry>
+        </visual>
+    </link>
+</robot>
+

@@ -138,6 +138,27 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+#CSV_SAVER
+add_executable(csv_saver src/csv_saver.cpp)
+target_link_libraries(csv_saver ${CURSES_LIBRARIES})
+ament_target_dependencies(csv_saver
+ rclcpp
+ std_msgs
+ geometry_msgs
+ )
+
+ target_include_directories(csv_saver PUBLIC
+ $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+ $<INSTALL_INTERFACE:include>
+ ${EIGEN3_INCLUDE_DIR}  # Add Eigen include directory 
+ )
+ 
+
+install(TARGETS
+  csv_saver
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 #butterworth filter
 add_library(ButterworthFilter src/ButterworthFilter.cpp)

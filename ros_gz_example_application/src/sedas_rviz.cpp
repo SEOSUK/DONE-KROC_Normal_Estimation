@@ -22,6 +22,7 @@
 #include <iostream>
 #include <std_msgs/msg/float64_multi_array.hpp>  // 다중 float64 배열 퍼블리시
 #include <tf2/LinearMath/Quaternion.h>
+#include <random>
 
 using namespace std::chrono_literals;
 
@@ -91,6 +92,10 @@ class sedas_rviz : public rclcpp::Node
       "/obstacle_marker", 10);
 
 
+      Normal_X_Axis_Yaw_Rotation_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
+      "/Normal_Vector", 10);
+
+
       timer_ = this->create_wall_timer(
       10ms, std::bind(&sedas_rviz::timer_callback, this));
 
@@ -108,12 +113,12 @@ class sedas_rviz : public rclcpp::Node
       Robot_State_Publisher();
       End_Effector_Pos_Vel_Publisher();
       End_Effector_Force_Publisher();
-      Normal_vector_estimation_and_visual_Publisher();
+      if(contact_Flag) Normal_vector_estimation_and_visual_Publisher();
       if(contact_Flag) Define_Normal_Frame();
       else Remove_Normal_Frame();
       EE_cmd_publisher();
       obstacle_visualizer();
-
+      Calculate_X_Axis_Yaw_Rotation();
       data_publisher();
     }
 
@@ -471,8 +476,13 @@ void EE_cmd_publisher()
     Estimated_normal_Vector = External_force_sensor_meas_global -  alpha * EE_lin_vel;
 
 
-//    Estimated_normal_Vector = Estimated_normal_Vector.normalized();
+    // Estimated_normal_Vector = Estimated_normal_Vector.normalized();
     Estimated_normal_Vector = External_force_sensor_meas_global;
+
+
+
+
+
     Estimated_normal_Vector[2] = 0;              // IF wanna set 3dof, delete
     auto marker = visualization_msgs::msg::Marker();
     marker.header.frame_id = "world";
@@ -604,36 +614,31 @@ void Remove_Normal_Frame()
     // TODO: rviz에 속이 빈 원기둥(파이프) 시각화하기
 
     visualization_msgs::msg::Marker outer_cylinder;
-    visualization_msgs::msg::Marker inner_cylinder;
 
     // 공통 설정
-    outer_cylinder.header.frame_id = inner_cylinder.header.frame_id = "world";
-    outer_cylinder.header.stamp = inner_cylinder.header.stamp = this->now();
-    outer_cylinder.ns = inner_cylinder.ns = "obstacle";
-    outer_cylinder.action = inner_cylinder.action = visualization_msgs::msg::Marker::ADD;
-    outer_cylinder.type = inner_cylinder.type = visualization_msgs::msg::Marker::CYLINDER;
+    outer_cylinder.header.frame_id = "world";
+    outer_cylinder.header.stamp = this->now();
+    outer_cylinder.ns = "obstacle";
+    outer_cylinder.action = visualization_msgs::msg::Marker::ADD;
+    outer_cylinder.type = visualization_msgs::msg::Marker::CYLINDER;
 
     // 위치 설정 (두 개의 원기둥이 동일한 위치에 있어야 함)
-    outer_cylinder.pose.position.x = inner_cylinder.pose.position.x = 3.0;
-    outer_cylinder.pose.position.y = inner_cylinder.pose.position.y = 1.0;
-    outer_cylinder.pose.position.z = inner_cylinder.pose.position.z = 2.0;
-    outer_cylinder.pose.orientation.x = inner_cylinder.pose.orientation.x = 0.0;
-    outer_cylinder.pose.orientation.y = inner_cylinder.pose.orientation.y = 0.0;
-    outer_cylinder.pose.orientation.z = inner_cylinder.pose.orientation.z = 0.0;
-    outer_cylinder.pose.orientation.w = inner_cylinder.pose.orientation.w = 1.0;
+    outer_cylinder.pose.position.x = 3.0;
+    outer_cylinder.pose.position.y = 1.0;
+    outer_cylinder.pose.position.z = 0.0;
+    outer_cylinder.pose.orientation.x = 0.0;
+    outer_cylinder.pose.orientation.y = 0.0;
+    outer_cylinder.pose.orientation.z = 0.0;
+    outer_cylinder.pose.orientation.w = 1.0;
 
     // 크기 설정
-    double outer_radius = 2.0;  // 외부 원기둥 반지름
-    double inner_radius = 1.5;  // 내부 원기둥 반지름 (외부보다 작아야 함)
-    double height = 4.0;        // 원기둥 높이
+    double outer_radius = 1.0;  // 외부 원기둥 반지름
+    double height = 1.0;        // 원기둥 높이
 
     outer_cylinder.scale.x = outer_radius * 2;
     outer_cylinder.scale.y = outer_radius * 2;
     outer_cylinder.scale.z = height;
 
-    inner_cylinder.scale.x = inner_radius * 2;
-    inner_cylinder.scale.y = inner_radius * 2;
-    inner_cylinder.scale.z = height + 0.01;  // 내부 원기둥을 살짝 더 키워서 내부 공간이 확실히 보이게 함
 
     // 색상 설정
     outer_cylinder.color.r = 0.3;
@@ -641,20 +646,38 @@ void Remove_Normal_Frame()
     outer_cylinder.color.b = 1.0;
     outer_cylinder.color.a = 0.8;  // 외부 원기둥은 불투명하게
 
-    inner_cylinder.color.r = 0.3;
-    inner_cylinder.color.g = 0.3;
-    inner_cylinder.color.b = 1.0;
-    inner_cylinder.color.a = 0.2;  // 내부 원기둥을 거의 투명하게
-
     // ID 설정
     outer_cylinder.id = 0;
-    inner_cylinder.id = 1;
 
     // 메시지 퍼블리시
     obstacle_publisher_->publish(outer_cylinder);
-    obstacle_publisher_->publish(inner_cylinder);
-
   }
+
+
+
+  void Calculate_X_Axis_Yaw_Rotation()
+  {
+      // Normal Frame의 X축 벡터 (Estimated_normal_Vector)
+      Eigen::Vector3d C_x = Estimated_normal_Vector.normalized();
+      
+      // X축 회전량 (Yaw) 계산
+      double x_axis_yaw_rotation = std::atan2(C_x[1], C_x[0]);
+      
+      // External Force Sensor 방향 벡터 (Global 기준)
+      Eigen::Vector3d force_dir = External_force_sensor_meas_global.normalized();
+      
+      // Force Vector의 yaw 회전량 (global x축과의 차이)
+      double force_yaw_rotation = std::atan2(force_dir[1], force_dir[0]);
+      
+      // ROS 메시지로 Float64MultiArray로 퍼블리시
+      std_msgs::msg::Float64MultiArray yaw_msg;
+      yaw_msg.data.push_back(x_axis_yaw_rotation);
+      yaw_msg.data.push_back(force_yaw_rotation);
+      Normal_X_Axis_Yaw_Rotation_publisher_->publish(yaw_msg);
+  }
+
+
+
 
 
   void data_publish()
@@ -710,7 +733,7 @@ void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   global_rpy_vel_meas = Rot_D2G(body_rpy_vel_meas, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
 }
 
-	    
+
 	    
 void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 {
@@ -778,6 +801,7 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
     // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);    
 
     External_force_sensor_meas_global = Rot_D2G(External_force_sensor_meas, Tw3_Pos[3], Tw3_Pos[4], Tw3_Pos[5]);
+    External_force_sensor_meas_global.normalized();
 }
 
 void EE_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
@@ -789,6 +813,16 @@ void EE_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
   EE_body_rpy_cmd[0] = msg->data[3];
   EE_body_rpy_cmd[1] = msg->data[4];
   EE_body_rpy_cmd[2] = msg->data[5];
+}
+
+// 가우시안 노이즈 생성 함수
+double Generate_Gaussian_Noise(double mean, double stddev)
+{
+    static std::random_device rd;
+    static std::mt19937 generator(rd());
+    static std::normal_distribution<double> distribution(mean, stddev);
+    
+    return distribution(generator);
 }
 
 
@@ -809,6 +843,7 @@ void EE_cmd_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr EE_Force_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr Normal_Vector_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr obstacle_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr Normal_X_Axis_Yaw_Rotation_publisher_;
 
 
 

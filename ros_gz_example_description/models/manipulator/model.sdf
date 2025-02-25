@@ -24,20 +24,11 @@
             <pose relative_to="link_drone">0 0 0 0 0 0.785398</pose>
             <geometry>
             <mesh>
-            <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/palletrone.dae</uri>
+            <uri>package://ros_gz_example_description/models/manipulator/meshes/palletrone.dae</uri>
             <scale>0.00085 0.00085 0.00085</scale>
             </mesh>
             </geometry>
         </visual>
-        <collision name="collision">
-            <pose relative_to="link_drone">0 0 0 0 0 0.785398</pose>
-            <geometry>
-            <mesh>
-            <uri>file:///home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/meshes/palletrone.dae</uri>
-            <scale>0.0001 0.0001 0.0001</scale>
-            </mesh>
-            </geometry>
-        </collision>
             <!-- Joint 1 Visual (Sphere) -->
             <visual name="visual_joint_1">
             <pose relative_to="link_drone">0 0 0.15 0 0 0</pose>
@@ -130,15 +121,6 @@
                     <diffuse>0.0 1.0 1.0 1.0</diffuse>
                 </material>
             </visual>
-            <collision name="collision_link_1">
-          <pose relative_to="link_1">0 0 0 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.03</radius>
-                        <length>0.1</length>
-                    </cylinder>
-                </geometry>
-            </collision>
             <!-- Joint 2 Visual (Sphere) -->
             <visual name="visual_joint_2">
             <pose relative_to="link_1">0 0 0.05 1.57 0 0</pose>
@@ -199,7 +181,7 @@
         <link name="link_2">
             <pose relative_to="link_1">0.1 0 0.05 0 1.57 0</pose>
             <inertial>
-                <mass>0.5</mass>
+                <mass>0.1</mass>
                 <inertia>
 		    <ixx>0.0001</ixx>
 		    <iyy>0.0001</iyy>
@@ -219,15 +201,6 @@
                     <diffuse>1.0 0.0 0.0 1.0</diffuse>
                 </material>
             </visual>
-            <collision name="collision_link_2">
-            <pose relative_to="link_2">0 0 0 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.02</radius>
-                        <length>0.2</length>
-                    </cylinder>
-                </geometry>
-            </collision>
             <!-- Joint 3 Visual (Sphere) -->
             <visual name="visual_joint_3">
             <pose relative_to="joint_2">0.2 0 0 0 0 0</pose>
@@ -290,7 +263,7 @@
         <link name="link_3">
             <pose relative_to="link_2">0 0 0.2 0 0 0</pose>
             <inertial>
-                <mass>0.5</mass>
+                <mass>0.1</mass>
                 <inertia>
 		    <ixx>0.0001</ixx>
 		    <iyy>0.0001</iyy>
@@ -310,15 +283,6 @@
                     <diffuse>1.0 0.0 0.0 1.0</diffuse>
                 </material>
             </visual>
-            <collision name="collision_link_3">
-            <pose relative_to="link_3">0 0 0 0 0 0</pose>
-                <geometry>
-                    <cylinder>
-                        <radius>0.02</radius>
-                        <length>0.2</length>
-                    </cylinder>
-                </geometry>
-            </collision>
         </link>
         <!-- Joint 3 -->
         <joint name="joint_EE" type="fixed">
@@ -373,8 +337,8 @@
                 <surface>
                     <friction>
                     <ode>
-                        <mu>0.2</mu>
-                        <mu2>0.2</mu2>
+                        <mu>0.4</mu>
+                        <mu2>0.4</mu2>
                     </ode>
                     </friction>
                 </surface>                
