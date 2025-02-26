@@ -21,7 +21,7 @@ public:
                                       .durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
 
-        const std::string urdf_filename = "/home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/model.urdf";
+        const std::string urdf_filename = "/home/mrl-seuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/model.urdf";
         // Pinocchio 모델 초기화
         try {
             pinocchio::urdf::buildModel(urdf_filename, pinocchio::JointModelFreeFlyer(), model);

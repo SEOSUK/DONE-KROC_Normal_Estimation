@@ -83,7 +83,7 @@ class sedas_traj : public rclcpp::Node
       std_msgs::msg::Float64MultiArray drone_cmd;
       drone_cmd.data.push_back(EE_xyz_position_cmd[0]);
       drone_cmd.data.push_back(EE_xyz_position_cmd[1]);
-      drone_cmd.data.push_back(EE_xyz_position_cmd[2]+1);
+      drone_cmd.data.push_back(EE_xyz_position_cmd[2] +1);
       drone_cmd.data.push_back(EE_rpy_position_cmd[0]);
       drone_cmd.data.push_back(EE_rpy_position_cmd[1]);
       drone_cmd.data.push_back(EE_rpy_position_cmd[2]);
@@ -98,39 +98,9 @@ class sedas_traj : public rclcpp::Node
 
 void traj_gen()
 {
-  time_cnt+= 0.01;
-  if(time_cnt > 5) EE_xyz_vel_cmd[0] = 0.1;
-    if (External_force_sensor_meas.norm() < 0.01 
-        || EE_lin_vel.norm() < 0.01) {
-        // 접촉이 없거나 속도가 낮은 경우: 기존 방식 유지
+
         EE_xyz_position_cmd += EE_xyz_vel_cmd * 0.01;
         EE_rpy_position_cmd += EE_rpy_vel_cmd * 0.01;
-      RCLCPP_INFO(this->get_logger(), "Not");
-    }
-    else
-    {
-        // 1️⃣ Normal Frame의 3D 회전 행렬 계산 (Roll, Pitch, Yaw 모두 고려)
-        Eigen::Matrix3d R_N2G = get_rotation_matrix(Normal_rpy_angle[0], Normal_rpy_angle[1], Normal_rpy_angle[2]);
-
-        // 2️⃣ Normal Frame 기준 속도 변환
-        Eigen::Vector3d vel_normal = drone_xyz_vel_cmd;  // drone_xyz_vel_cmd는 이미 Normal Frame 기준 속도
-
-            vel_normal(1) = 0.2;
-            vel_normal(2) = 0.1;
-
-        // 3️⃣ Global Frame으로 변환
-        Eigen::Vector3d vel_filtered = R_N2G * vel_normal;
-
-        // 4️⃣ Global Frame에서 최종 위치 업데이트
-        EE_xyz_position_cmd += vel_filtered * 0.01;
-      RCLCPP_INFO(this->get_logger(), "Contact ");
-
-        // 5️⃣ End-Effector의 Orientation (RPY)도 Normal Frame과 일치
-        EE_rpy_position_cmd = rpy_cmd_filter.apply(Normal_rpy_angle);  // EE의 Roll, Pitch, Yaw를 Normal Frame과 동일하게 설정
-    }
-
-        // EE_xyz_position_cmd += EE_xyz_vel_cmd * 0.01;
-        // EE_rpy_position_cmd += EE_rpy_vel_cmd * 0.01;
 
 
 }
@@ -154,57 +124,57 @@ void traj_gen()
       // 입력된 키를 문자열로 가져옴
       std::string input = msg->data;
 
-        // if (!input.empty()) // 입력 값이 비어있지 않을 경우
-        // {
-        //     char input_char = input[0]; // 문자열의 첫 번째 문자만 사용
+        if (!input.empty()) // 입력 값이 비어있지 않을 경우
+        {
+            char input_char = input[0]; // 문자열의 첫 번째 문자만 사용
 
-        //     if (input_char == 'w')
-        //     {
-        //         EE_xyz_vel_cmd[0] += 0.1;
-        //     }
-        //     else if (input_char == 's')
-        //     {
-        //         EE_xyz_vel_cmd[0] -= 0.1;
-        //     }
-        //     else if (input_char == 'a')
-        //     {
-        //         EE_xyz_vel_cmd[1] += 0.1;
-        //     }
-        //     else if (input_char == 'd')
-        //     {
-        //         EE_xyz_vel_cmd[1] -= 0.1;
-        //     }
-        //     else if (input_char == 'e')
-        //     {
-        //         EE_xyz_vel_cmd[2] += 0.1;
-        //     }
-        //     else if (input_char == 'q')
-        //     {
-        //         EE_xyz_vel_cmd[2] -= 0.1;
-        //     }
-        //     else if (input_char == 'z')
-        //     {
-        //         EE_rpy_vel_cmd[2] += 0.1;
-        //     }
-        //     else if (input_char == 'c')
-        //     {
-        //         EE_rpy_vel_cmd[2] -= 0.1;
-        //     }
-        //     else if (input_char == 'n' || input_char == 'x')
-        //     {
-        //         EE_xyz_vel_cmd[0] = 0;
-        //         EE_xyz_vel_cmd[1] = 0;
-        //         EE_xyz_vel_cmd[2] = 0;
+            if (input_char == 'w')
+            {
+                EE_xyz_vel_cmd[0] += 0.1;
+            }
+            else if (input_char == 's')
+            {
+                EE_xyz_vel_cmd[0] -= 0.1;
+            }
+            else if (input_char == 'a')
+            {
+                EE_xyz_vel_cmd[1] += 0.1;
+            }
+            else if (input_char == 'd')
+            {
+                EE_xyz_vel_cmd[1] -= 0.1;
+            }
+            else if (input_char == 'e')
+            {
+                EE_xyz_vel_cmd[2] += 0.1;
+            }
+            else if (input_char == 'q')
+            {
+                EE_xyz_vel_cmd[2] -= 0.1;
+            }
+            else if (input_char == 'z')
+            {
+                EE_rpy_vel_cmd[2] += 0.1;
+            }
+            else if (input_char == 'c')
+            {
+                EE_rpy_vel_cmd[2] -= 0.1;
+            }
+            else if (input_char == 'n' || input_char == 'x')
+            {
+                EE_xyz_vel_cmd[0] = 0;
+                EE_xyz_vel_cmd[1] = 0;
+                EE_xyz_vel_cmd[2] = 0;
 
-        //         EE_rpy_vel_cmd[0] = 0;
-        //         EE_rpy_vel_cmd[1] = 0;
-        //         EE_rpy_vel_cmd[2] = 0;
-        //     }
-        // }
-        //   else
-        //   {
-        //       RCLCPP_WARN(this->get_logger(), "입력된 키가 없습니다!");
-        //   }
+                EE_rpy_vel_cmd[0] = 0;
+                EE_rpy_vel_cmd[1] = 0;
+                EE_rpy_vel_cmd[2] = 0;
+            }
+        }
+          else
+          {
+              RCLCPP_WARN(this->get_logger(), "입력된 키가 없습니다!");
+          }
 
 
     }
