@@ -12,4 +12,3 @@ https://github.com/gazebosim/ros_gz_project_template.
 SEOSUK is just modifying..
 
 * `현재는 https://github.com/SEOSUK/sitl_SEDASOM 에서 주로 작업하고 있습니다.`
-
