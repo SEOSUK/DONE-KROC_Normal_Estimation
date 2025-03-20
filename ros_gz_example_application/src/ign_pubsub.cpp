@@ -111,9 +111,9 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 10, 10, 10;
+    body_xyz_P.diagonal() << 30, 30, 100;
     body_xyz_I.diagonal() << 0., 0., 0.;
-    body_xyz_D.diagonal() << 1, 1, 1;
+    body_xyz_D.diagonal() << 3, 3, 10;
     body_rpy_P.diagonal() << 10, 10, 5;
     body_rpy_D.diagonal() << 1, 1, 0.5;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
@@ -210,10 +210,10 @@ void set_traj()
 
     time_cnt += delta_time;
 
-	if (time_cnt > 5)
+	if (time_cnt > 5 && time_cnt < 10)
 {    joint_angle_cmd[0] = 0;
-    joint_angle_cmd[1] = M_PI / 3;
-    joint_angle_cmd[0] = -M_PI / 6;
+    joint_angle_cmd[1] = M_PI / 5 * (time_cnt - 5) / 5;
+    joint_angle_cmd[2] = -M_PI / 4 * (time_cnt - 5) / 5;
 }
 }
 
@@ -222,12 +222,18 @@ void set_traj()
 
 void data_publish()
 {	// publish!!
+
+  RCLCPP_WARN(this->get_logger(), "%lf, %lf, %lf", global_force_cmd[0], global_force_cmd[1], global_force_cmd[2]);
+
+
+
+
   joint_1_cmd_msg.data = joint_angle_cmd[0];
   joint_2_cmd_msg.data = joint_angle_cmd[1];
   joint_3_cmd_msg.data = joint_angle_cmd[2];	      
   wrench_msg.wrench.force.x = global_force_cmd[0];
   wrench_msg.wrench.force.y = global_force_cmd[1];
-  wrench_msg.wrench.force.z = 5;  // 500 N 힘 적용
+  wrench_msg.wrench.force.z = global_force_cmd[2];  // 500 N 힘 적용
   wrench_msg.wrench.torque.x = global_torque_cmd[0];
   wrench_msg.wrench.torque.y = global_torque_cmd[1];
   wrench_msg.wrench.torque.z = global_torque_cmd[2];

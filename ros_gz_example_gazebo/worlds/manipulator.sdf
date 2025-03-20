@@ -85,13 +85,6 @@
   <ambient>0.4 0.4 0.4 1</ambient> <!-- 환경광 설정 -->
   <background>0.7 0.8 0.9 1</background> <!-- 배경색 설정 -->
   <shadows>true</shadows> <!-- 그림자 활성화 -->
-  <sky>
-    <clouds>
-      <speed>0.01</speed> <!-- 구름 이동 속도 -->
-      <direction>0.0 0.5</direction> <!-- 구름 이동 방향 -->
-      <scale>2</scale> <!-- 구름 크기 -->
-    </clouds>
-  </sky>
 </scene>
 
 
@@ -115,7 +108,7 @@
     <!-- 2-link Manipulator 모델 추가 -->
     <model name="manipulator">
       <self_collide>true</self_collide>
-      <pose>0 0 0.15 0 0 0</pose>
+      <pose>0 0 1 0 0 0</pose>
       <include merge="true">
         <uri>package://ros_gz_example_description/models/manipulator</uri>
       </include>

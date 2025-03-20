@@ -20,8 +20,6 @@
 #include "sedas_rot.hpp"
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <iostream>
-#include <std_msgs/msg/float64_multi_array.hpp>  // 다중 float64 배열 퍼블리시
-#include <tf2/LinearMath/Quaternion.h>
 #include <random>
 
 using namespace std::chrono_literals;
