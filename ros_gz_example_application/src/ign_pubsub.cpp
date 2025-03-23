@@ -113,9 +113,9 @@ class ign_pubsub : public rclcpp::Node
 
     body_xyz_P.diagonal() << 30, 30, 100;
     body_xyz_I.diagonal() << 0., 0., 0.;
-    body_xyz_D.diagonal() << 3, 3, 10;
-    body_rpy_P.diagonal() << 10, 10, 5;
-    body_rpy_D.diagonal() << 1, 1, 0.5;
+    body_xyz_D.diagonal() << 3, 3, 9;
+    body_rpy_P.diagonal() << 10, 10, 4;
+    body_rpy_D.diagonal() << 1, 1, 0.1;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -185,6 +185,8 @@ void set_traj()
   const Eigen::Vector3d rod_offset(0.4, 0.0, 0.2);
   
   
+  global_EE_xyz_cmd[1] = 0.1 * sin (2 * M_PI * 0.2 * time_cnt);
+  
       // **Step 2: RPY에서 회전 행렬 생성 (R = Rz * Ry * Rx)**
     double roll = body_EE_rpy_cmd[0];
     double pitch = body_EE_rpy_cmd[1];
@@ -211,9 +213,9 @@ void set_traj()
     time_cnt += delta_time;
 
 	if (time_cnt > 5 && time_cnt < 10)
-{    joint_angle_cmd[0] = 0;
-    joint_angle_cmd[1] = M_PI / 5 * (time_cnt - 5) / 5;
-    joint_angle_cmd[2] = -M_PI / 4 * (time_cnt - 5) / 5;
+{   joint_angle_cmd[0] = 0;
+    joint_angle_cmd[1] = M_PI / 11 * (time_cnt - 5) / 5;
+    joint_angle_cmd[2] = M_PI / 4.5 * (time_cnt - 5) / 5;
 }
 }
 
