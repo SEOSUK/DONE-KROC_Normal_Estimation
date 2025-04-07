@@ -64,9 +64,3 @@
   ros_type_name: "geometry_msgs/msg/WrenchStamped"
   gz_type_name: "gz.msgs.Wrench"
   direction: GZ_TO_ROS
-- ros_topic_name: "/force_torque_EE"
-  gz_topic_name: "/force_torque_EE"
-  ros_type_name: "geometry_msgs/msg/WrenchStamped"
-  gz_type_name: "gz.msgs.Wrench"
-  direction: GZ_TO_ROS  
-

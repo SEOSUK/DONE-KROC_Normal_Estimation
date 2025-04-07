@@ -107,7 +107,7 @@ def generate_launch_description():
                               description='Open RViz.'),
         bridge,
         ign_pubsub_node,  # 추가된 ign_pubsub 노드  
-	pinocchio_node,
-	sedas_rviz_node,
-	traj_node	
+  	pinocchio_node,
+ 	sedas_rviz_node,
+ 	traj_node	
     ])

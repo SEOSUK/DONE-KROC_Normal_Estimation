@@ -1,25 +1,36 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch.substitutions import PathJoinSubstitution, Command
+from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
+    manipulator_urdf_path = PathJoinSubstitution([
+        FindPackageShare('ros_gz_example_description'),
+        'models', 'manipulator', 'model.urdf'
+    ])
+
+    drone_urdf_path = PathJoinSubstitution([
+        FindPackageShare('ros_gz_example_description'),
+        'models', 'manipulator', 'cylinder.urdf'
+    ])
+
     return LaunchDescription([
-        # 기존 URDF 파일 로드
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
             name='manipulator_state_publisher',
-            arguments=['/home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/model.urdf'],
+            parameters=[{
+                'robot_description': Command(['cat ', manipulator_urdf_path])
+            }]
         ),
-
-        # 새로운 URDF 파일 로드 (예시: drone.urdf)
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
             name='drone_state_publisher',
-            arguments=['/home/mrlseuk/ros2_ws/src/ros_gz_project_template/ros_gz_example_description/models/manipulator/cylinder.urdf'],
+            parameters=[{
+                'robot_description': Command(['cat ', drone_urdf_path])
+            }]
         ),
-
-        # RViz 실행
         Node(
             package='rviz2',
             executable='rviz2',
