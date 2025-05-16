@@ -640,7 +640,7 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
     External_force_sensor_meas[2] = msg->wrench.force.z;
     // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);
 
-    External_force_sensor_meas_global = Rot_D2G(External_force_sensor_meas, Tw3_Pos[3], Tw3_Pos[4], Tw3_Pos[5]);
+    External_force_sensor_meas_global = Rot_D2G(External_force_sensor_meas, body_rpy_meas[0], body_rpy_meas[1], body_rpy_meas[2]);
     External_force_sensor_meas_global.normalized();
 }
 
