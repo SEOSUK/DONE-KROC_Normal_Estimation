@@ -24,11 +24,11 @@ class sedas_traj : public rclcpp::Node
 {
   public:
     sedas_traj()
-      : Node("sedas_traj"), 
+      : Node("sedas_traj"),
       count_(0),
       rpy_cmd_filter(3, 1., 0.01), // FilteredVector 초기화
       xyz_cmd_filter(3, 1, 0.01) // FilteredVector 초기화
-    {      
+    {
       // QoS 설정
       rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(10))
                                       .reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE)
@@ -54,7 +54,7 @@ class sedas_traj : public rclcpp::Node
 
     EE_vel_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
         "/pinnochio/EE_vel", qos_settings,
-        std::bind(&sedas_traj::EE_vel_callback, this, std::placeholders::_1)); 
+        std::bind(&sedas_traj::EE_vel_callback, this, std::placeholders::_1));
 
 
       timer_ = this->create_wall_timer(
@@ -68,7 +68,7 @@ class sedas_traj : public rclcpp::Node
 
   private:
     void timer_callback()
-    {   
+    {
 
 
         traj_gen();
@@ -184,12 +184,12 @@ void traj_gen()
       External_force_sensor_meas[0] = msg->wrench.force.x;
       External_force_sensor_meas[1] = msg->wrench.force.y;
       External_force_sensor_meas[2] = msg->wrench.force.z;
-      // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);    
+      // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);
 
   }
 
   void EE_vel_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
-  {  
+  {
 
       EE_lin_vel[0] = msg->data[0];
       EE_lin_vel[1] = msg->data[1];
@@ -202,18 +202,18 @@ void traj_gen()
 
 
 
-  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr keyboard_subscriber_; 
-  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr Normal_rpy_angle_subscriber_; 
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr keyboard_subscriber_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr Normal_rpy_angle_subscriber_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr drone_cmd_publisher_;
-  rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_EE_torque_subscriber_; 
-  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_vel_subscriber_; 
+  rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_EE_torque_subscriber_;
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_vel_subscriber_;
 
 
 
   size_t count_;
   std_msgs::msg::Float64 joint_1_cmd_msg;
   std_msgs::msg::Float64 joint_2_cmd_msg;
-  std_msgs::msg::Float64 joint_3_cmd_msg;    
+  std_msgs::msg::Float64 joint_3_cmd_msg;
   //TODO:: 아래 세 줄 정의 제대로 하기
 
 

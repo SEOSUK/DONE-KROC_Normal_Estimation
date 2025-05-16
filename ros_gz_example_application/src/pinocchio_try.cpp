@@ -25,9 +25,9 @@ public:
         // Pinocchio 모델 초기화
         try {
             pinocchio::urdf::buildModel(urdf_filename, pinocchio::JointModelFreeFlyer(), model);
-            RCLCPP_INFO(this->get_logger(), "Model loaded successfully with nq=%d, nv=%d", model.nq, model.nv);
+            // RCLCPP_INFO(this->get_logger(), "Model loaded successfully with nq=%d, nv=%d", model.nq, model.nv);
         } catch (const std::exception &e) {
-            RCLCPP_ERROR(this->get_logger(), "Error loading URDF: %s", e.what());
+            // RCLCPP_ERROR(this->get_logger(), "Error loading URDF: %s", e.what());
             rclcpp::shutdown();
             return;
         }
@@ -80,7 +80,7 @@ private:
 
 void timerCallback() {
     if (state.size() != model.nq || input_data.size() != model.nv) {
-        RCLCPP_ERROR(this->get_logger(), "State or input vector size mismatch!");
+        // RCLCPP_ERROR(this->get_logger(), "State or input vector size mismatch!");
         return;
     }
 
@@ -91,7 +91,7 @@ void timerCallback() {
         CalcEndEffectorPose(); // 추가
         data_publish();
     } catch (const std::exception &e) {
-        RCLCPP_ERROR(this->get_logger(), "Error during RNEA computation: %s", e.what());
+        // RCLCPP_ERROR(this->get_logger(), "Error during RNEA computation: %s", e.what());
     }
 }
 
@@ -117,14 +117,14 @@ void timerCallback() {
 
         // 크기 검증
         if (state_dot.size() != model.nv) {
-            RCLCPP_ERROR(this->get_logger(), "Mismatch: state_dot size (%ld) != model.nv (%d)", 
-                        state_dot.size(), model.nv);
+            // RCLCPP_ERROR(this->get_logger(), "Mismatch: state_dot size (%ld) != model.nv (%d)",
+                        // state_dot.size(), model.nv);
             return;
         }
 
         if (J.cols() != state_dot.size()) {
-            RCLCPP_ERROR(this->get_logger(), "Mismatch: Jacobian cols (%d) != state_dot size (%ld)",
-                        J.cols(), state_dot.size());
+            // RCLCPP_ERROR(this->get_logger(), "Mismatch: Jacobian cols (%d) != state_dot size (%ld)",
+                        // J.cols(), state_dot.size());
             return;
         }
 
@@ -203,14 +203,14 @@ void timerCallback() {
     position_msg.data.push_back(position[1]);
     position_msg.data.push_back(position[2]);
     EE_pos_publisher_->publish(position_msg);
-    
+
     }
 
 
     void stateCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
         if (msg->data.size() != model.nq) {
-            RCLCPP_WARN(this->get_logger(), "Received state vector size mismatch: %ld (expected %ld)",
-                        msg->data.size(), model.nq);
+            // RCLCPP_WARN(this->get_logger(), "Received state vector size mismatch: %ld (expected %ld)",
+                        // msg->data.size(), model.nq);
             return;
         }
 
@@ -221,8 +221,8 @@ void timerCallback() {
 
     void stateDotCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
         if (msg->data.size() != model.nv) {
-            RCLCPP_WARN(this->get_logger(), "Received state_DOT vector size mismatch: %ld (expected %ld)",
-                        msg->data.size(), model.nv);
+            // RCLCPP_WARN(this->get_logger(), "Received state_DOT vector size mismatch: %ld (expected %ld)",
+                        // msg->data.size(), model.nv);
             return;
         }
 
@@ -240,8 +240,8 @@ void timerCallback() {
 
     void inputCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
         if (msg->data.size() != model.nv) {
-            RCLCPP_WARN(this->get_logger(), "Received input vector size mismatch: %ld (expected %ld)",
-                        msg->data.size(), model.nv);
+            // RCLCPP_WARN(this->get_logger(), "Received input vector size mismatch: %ld (expected %ld)",
+                        // msg->data.size(), model.nv);
             return;
         }
 
@@ -252,7 +252,7 @@ void timerCallback() {
 
 
 
-    Eigen::VectorXd state = Eigen::VectorXd::Zero(10);    
+    Eigen::VectorXd state = Eigen::VectorXd::Zero(10);
     Eigen::VectorXd input_data;
     Eigen::VectorXd state_dot = Eigen::VectorXd::Zero(9);
     Eigen::VectorXd state_ddot = Eigen::VectorXd::Zero(9);

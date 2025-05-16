@@ -20,6 +20,8 @@
 #include "sedas_rot.hpp"
 #include <geometry_msgs/msg/wrench_stamped.hpp>
 #include <iostream>
+#include <std_msgs/msg/float64_multi_array.hpp>  // 다중 float64 배열 퍼블리시
+#include <tf2/LinearMath/Quaternion.h>
 #include <random>
 
 using namespace std::chrono_literals;
@@ -31,30 +33,27 @@ class sedas_rviz : public rclcpp::Node
 {
   public:
     sedas_rviz()
-      : Node("sedas_rviz"), 
-      tf_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(this)), 
+      : Node("sedas_rviz"),
+      tf_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(this)),
       count_(0)
-    {      
+    {
       // QoS 설정
       rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(10))
                                       .reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE)
                                       .durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
-      joint_state_subscriber_ = this->create_subscription<sensor_msgs::msg::JointState>(
-          "/manipulator/joint_states", qos_settings,
-          std::bind(&sedas_rviz::joint_state_subsciber_callback, this, std::placeholders::_1));
       link_yaw_imu_subscriber_ = this->create_subscription<sensor_msgs::msg::Imu>(
           "/manipulator/imu", qos_settings,
           std::bind(&sedas_rviz::imu_subscriber_callback, this, std::placeholders::_1));
       position_subscriber_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
           "/manipulator/pose_info", qos_settings,
-          std::bind(&sedas_rviz::global_pose_callback, this, std::placeholders::_1));            
+          std::bind(&sedas_rviz::global_pose_callback, this, std::placeholders::_1));
       EE_vel_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
           "/pinnochio/EE_vel", qos_settings,
-          std::bind(&sedas_rviz::EE_vel_callback, this, std::placeholders::_1)); 
+          std::bind(&sedas_rviz::EE_vel_callback, this, std::placeholders::_1));
       EE_pos_subscriber_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
           "/pinnochio/EE_pos", qos_settings,
-          std::bind(&sedas_rviz::EE_pos_callback, this, std::placeholders::_1)); 
+          std::bind(&sedas_rviz::EE_pos_callback, this, std::placeholders::_1));
 
       FK_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
     "/manipulator/FK", 10);
@@ -78,10 +77,10 @@ class sedas_rviz : public rclcpp::Node
     "/EE_Vel_marker", 10);
 
       EE_Force_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>(
-    "/EE_Force_marker", 10);    
+    "/EE_Force_marker", 10);
 
       Normal_Vector_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>(
-    "/Normal_Vector_marker", 10);        
+    "/Normal_Vector_marker", 10);
 
       Normal_rpy_angle_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
     "/Normal_Vector_rpy_angle", 10);
@@ -136,7 +135,7 @@ class sedas_rviz : public rclcpp::Node
 
 void EE_cmd_publisher()
 {
-    static std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_ = 
+    static std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_ =
         std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
     // **Step 1: TF 메시지 생성**
@@ -165,112 +164,45 @@ void EE_cmd_publisher()
 
 
     void Calc_FK()
-    { 
-    // 기본적으로 드론의 Global Frame 기준 위치 및 자세를 기반으로 변환 행렬 T_w0 계산
-    Eigen::Matrix3d R_B = get_rotation_matrix(global_rpy_meas[0], global_rpy_meas[1], global_rpy_meas[2]);
-    T_w0.block<3, 3>(0, 0) = R_B;
-    T_w0.block<3, 1>(0, 3) = global_xyz_meas;
+    {
 
-    // DH 파라미터 기반의 변환 행렬 정의
-    T_01 << std::cos(joint_angle_meas[0]), 0, std::sin(joint_angle_meas[0]), 0,
-            std::sin(joint_angle_meas[0]), 0, -std::cos(joint_angle_meas[0]), 0,
-            0, 1, 0, l1 + 0.15,
-            0, 0, 0, 1;
+      //TODO: EE Pose FK로 풀기.
+      FK_EE_Pos[0] = p_E[0];
+      FK_EE_Pos[1] = p_E[1];
+      FK_EE_Pos[2] = p_E[2];
 
-    T_12 << std::cos(joint_angle_meas[1]), -std::sin(joint_angle_meas[1]), 0, l2 * std::cos(joint_angle_meas[1]),
-            std::sin(joint_angle_meas[1]), std::cos(joint_angle_meas[1]), 0, l2 * std::sin(joint_angle_meas[1]),
-            0, 0, 1, 0,
-            0, 0, 0, 1;
+      // 드론의 회전 (Roll, Pitch, Yaw)
+      double roll  = global_rpy_meas[0];
+      double pitch = global_rpy_meas[1];
+      double yaw   = global_rpy_meas[2];
 
-    T_23 << std::cos(joint_angle_meas[2]), -std::sin(joint_angle_meas[2]), 0, l3 * std::cos(joint_angle_meas[2]),
-            std::sin(joint_angle_meas[2]), std::cos(joint_angle_meas[2]), 0, l3 * std::sin(joint_angle_meas[2]),
-            0, 0, 1, 0,
-            0, 0, 0, 1;
+      // 드론의 전역 위치
+      Eigen::Vector3d p_drone = global_xyz_meas;
 
-    // Forward Kinematics 계산
-    Eigen::Matrix4d T_w1 = T_w0 * T_01;
-    Eigen::Matrix4d T_w2 = T_w1 * T_12;
-    Eigen::Matrix4d T_w3 = T_w2 * T_23;
+      // 드론 기준 EE 오프셋
+      Eigen::Vector3d d_offset(0.075, 0.0, 0.02);
 
-    // 엔드 이펙터의 위치 및 자세 추출
-    p_E = T_w3.block<3, 1>(0, 3); // 엔드 이펙터 위치
-    R_E = T_w3.block<3, 3>(0, 0); // 엔드 이펙터 자세
+      // Roll-Pitch-Yaw 회전 행렬
+      Eigen::Matrix3d R;
+      R = Eigen::AngleAxisd(yaw,   Eigen::Vector3d::UnitZ()) *
+          Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+          Eigen::AngleAxisd(roll,  Eigen::Vector3d::UnitX());
 
-    FK_EE_Pos[0] = p_E[0];
-    FK_EE_Pos[1] = p_E[1];
-    FK_EE_Pos[2] = p_E[2];
+      // 전역 위치 = 드론 위치 + 회전된 오프셋
+      Eigen::Vector3d p_EE = p_drone + R * d_offset;
 
+      // FK 결과 저장
+      FK_EE_Pos[0] = p_EE[0];
+      FK_EE_Pos[1] = p_EE[1];
+      FK_EE_Pos[2] = p_EE[2];
+      FK_EE_Pos[3] = roll;
+      FK_EE_Pos[4] = pitch;
+      FK_EE_Pos[5] = yaw;
 
-    // Global 기준 r, p, y angle 추출
-    FK_EE_Pos[3] = std::atan2(R_E(2, 1), R_E(2, 2));
-    FK_EE_Pos[4] = std::asin(-R_E(2, 0));
-    FK_EE_Pos[5] = std::atan2(R_E(1, 0), R_E(0, 0));
+      // EE 위치 저장 (필요 시)
+      p_E = p_EE;
+      R_E = R;
 
-    // T_w1 위치 및 자세 추출
-    Eigen::Vector3d p_w1 = T_w1.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w1 = T_w1.block<3, 3>(0, 0);
-    Tw1_Pos[0] = p_w1[0];
-    Tw1_Pos[1] = p_w1[1];
-    Tw1_Pos[2] = p_w1[2];
-    Tw1_Pos[3] = std::atan2(R_w1(2, 1), R_w1(2, 2));
-    Tw1_Pos[4] = std::asin(-R_w1(2, 0));
-    Tw1_Pos[5] = std::atan2(R_w1(1, 0), R_w1(0, 0));
-
-    // T_w2 위치 및 자세 추출
-    Eigen::Vector3d p_w2 = T_w2.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w2 = T_w2.block<3, 3>(0, 0);
-    Tw2_Pos[0] = p_w2[0];
-    Tw2_Pos[1] = p_w2[1];
-    Tw2_Pos[2] = p_w2[2];
-    Tw2_Pos[3] = std::atan2(R_w2(2, 1), R_w2(2, 2));
-    Tw2_Pos[4] = std::asin(-R_w2(2, 0));
-    Tw2_Pos[5] = std::atan2(R_w2(1, 0), R_w2(0, 0));
-
-    // T_w3 위치 및 자세 추출
-    Eigen::Vector3d p_w3 = T_w3.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_w3 = T_w3.block<3, 3>(0, 0);
-    Tw3_Pos[0] = p_w3[0];
-    Tw3_Pos[1] = p_w3[1];
-    Tw3_Pos[2] = p_w3[2];
-    Tw3_Pos[3] = std::atan2(R_w3(2, 1), R_w3(2, 2));
-    Tw3_Pos[4] = std::asin(-R_w3(2, 0));
-    Tw3_Pos[5] = std::atan2(R_w3(1, 0), R_w3(0, 0));
-    // State 벡터 출력 (디버깅용)
-    // std::cout << "State: \n" << State_dot << std::endl;
-
-
-    // T_01의 위치 벡터 및 자세 추출
-    Eigen::Vector3d p_01 = T_01.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_01 = T_01.block<3, 3>(0, 0);
-    T01_Pos[0] = p_01[0];
-    T01_Pos[1] = p_01[1];
-    T01_Pos[2] = p_01[2];
-
-    T01_Pos[3] = std::atan2(R_01(2, 1), R_01(2, 2));
-    T01_Pos[4] = std::asin(-R_01(2, 0));
-    T01_Pos[5] = std::atan2(R_01(1, 0), R_01(0, 0));
-
-    // T_12의 위치 벡터 및 자세 추출
-    Eigen::Vector3d p_12 = T_12.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_12 = T_12.block<3, 3>(0, 0);
-    T12_Pos[0] = p_12[0];
-    T12_Pos[1] = p_12[1];
-    T12_Pos[2] = p_12[2];    
-    
-    T12_Pos[3] = std::atan2(R_12(2, 1), R_12(2, 2));
-    T12_Pos[4] = std::asin(-R_12(2, 0));
-    T12_Pos[5] = std::atan2(R_12(1, 0), R_12(0, 0));
-
-    // T_23의 위치 벡터 및 자세 추출
-    Eigen::Vector3d p_23 = T_23.block<3, 1>(0, 3);
-    Eigen::Matrix3d R_23 = T_23.block<3, 3>(0, 0);
-    T23_Pos[0] = p_23[0];
-    T23_Pos[1] = p_23[1];
-    T23_Pos[2] = p_23[2];    
-
-    T23_Pos[3] = std::atan2(R_23(2, 1), R_23(2, 2));
-    T23_Pos[4] = std::asin(-R_23(2, 0));
-    T23_Pos[5] = std::atan2(R_23(1, 0), R_23(0, 0));
     }
 
 
@@ -320,152 +252,86 @@ void EE_cmd_publisher()
 
 
 
-  //Tw1 Pub
-        geometry_msgs::msg::TransformStamped transform_T01;
-        transform_T01.header.stamp = this->get_clock()->now();
-        transform_T01.header.frame_id = "link_drone"; // Parent frame
-        transform_T01.child_frame_id = "link_1";  // Child frame
-
-        transform_T01.transform.translation.x = 0;
-        transform_T01.transform.translation.y = 0;
-        transform_T01.transform.translation.z = 0.2;
-
-        // Convert roll, pitch, yaw to quaternion
-        tf2::Quaternion q_T01;
-        q_T01.setRPY(0, 0, joint_angle_meas[0]);
-        transform_T01.transform.rotation.x = q_T01.x();
-        transform_T01.transform.rotation.y = q_T01.y();
-        transform_T01.transform.rotation.z = q_T01.z();
-        transform_T01.transform.rotation.w = q_T01.w();
-
-        // Broadcast the transform
-        tf_broadcaster_->sendTransform(transform_T01);
-
-
-  //Tw2 Pub
-        geometry_msgs::msg::TransformStamped transform_T12;
-        transform_T12.header.stamp = this->get_clock()->now();
-        transform_T12.header.frame_id = "link_1"; // Parent frame
-        transform_T12.child_frame_id = "link_2";  // Child frame
-
-        transform_T12.transform.translation.x = 0;
-        transform_T12.transform.translation.y = 0.0;
-        transform_T12.transform.translation.z = 0.05;
-
-        // Convert roll, pitch, yaw to quaternion
-        tf2::Quaternion q_T12;
-        q_T12.setRPY(M_PI / 2, -joint_angle_meas[1], 0);
-        transform_T12.transform.rotation.x = q_T12.x();
-        transform_T12.transform.rotation.y = q_T12.y();
-        transform_T12.transform.rotation.z = q_T12.z();
-        transform_T12.transform.rotation.w = q_T12.w();
-
-        // Broadcast the transform
-        tf_broadcaster_->sendTransform(transform_T12);
-
-
-  //Tw3 Pub
-        geometry_msgs::msg::TransformStamped transform_T23;
-        transform_T23.header.stamp = this->get_clock()->now();
-        transform_T23.header.frame_id = "link_2"; // Parent frame
-        transform_T23.child_frame_id = "link_3";  // Child frame
-
-        transform_T23.transform.translation.x = 0.2;
-        transform_T23.transform.translation.y = 0;
-        transform_T23.transform.translation.z = 0;
-
-        // Convert roll, pitch, yaw to quaternion
-        tf2::Quaternion q_T23;
-        q_T23.setRPY(0, 0, joint_angle_meas[2]);
-        transform_T23.transform.rotation.x = q_T23.x();
-        transform_T23.transform.rotation.y = q_T23.y();
-        transform_T23.transform.rotation.z = q_T23.z();
-        transform_T23.transform.rotation.w = q_T23.w();
-
-        // Broadcast the transform
-        tf_broadcaster_->sendTransform(transform_T23);
     }
 
 
-void End_Effector_Pos_Vel_Publisher()
-{
-  // Rviz에서 시각화할 Marker 메시지 생성
-  auto marker = visualization_msgs::msg::Marker();
-  marker.header.frame_id = "world";
-  marker.header.stamp = this->get_clock()->now();
-  marker.ns = "ee_velocity";
-  marker.id = 0;
-  marker.type = visualization_msgs::msg::Marker::ARROW;
-  marker.action = visualization_msgs::msg::Marker::ADD;
+  void End_Effector_Pos_Vel_Publisher()
+  {
+    // Rviz에서 시각화할 Marker 메시지 생성
+    auto marker = visualization_msgs::msg::Marker();
+    marker.header.frame_id = "world";
+    marker.header.stamp = this->get_clock()->now();
+    marker.ns = "ee_velocity";
+    marker.id = 0;
+    marker.type = visualization_msgs::msg::Marker::ARROW;
+    marker.action = visualization_msgs::msg::Marker::ADD;
 
-  // 화살표의 시작점과 끝점 설정
-  geometry_msgs::msg::Point start_point, end_point;
-  start_point.x = FK_EE_Pos[0];
-  start_point.y = FK_EE_Pos[1];
-  start_point.z = FK_EE_Pos[2];
+    // 화살표의 시작점과 끝점 설정
+    geometry_msgs::msg::Point start_point, end_point;
+    start_point.x = FK_EE_Pos[0]; // 현재 위치
+    start_point.y = FK_EE_Pos[1];
+    start_point.z = FK_EE_Pos[2];
 
-  end_point.x = start_point.x + EE_lin_vel[0];
-  end_point.y = start_point.y + EE_lin_vel[1];
-  end_point.z = start_point.z + EE_lin_vel[2];
+    end_point.x = start_point.x + EE_lin_vel[0]; // 속도 벡터 방향
+    end_point.y = start_point.y + EE_lin_vel[1];
+    end_point.z = start_point.z + EE_lin_vel[2];
 
-  marker.points.push_back(start_point);
-  marker.points.push_back(end_point);
+    marker.points.push_back(start_point);
+    marker.points.push_back(end_point);
 
-  // 화살표의 색상 및 크기 설정
-  marker.scale.x = 0.015;
-  marker.scale.y = 0.03;
-  marker.scale.z = 0.03;
+    // 화살표의 색상 및 크기 설정
+    marker.scale.x = 0.02; // 화살표의 줄기 두께
+    marker.scale.y = 0.05; // 화살표의 머리 크기
+    marker.scale.z = 0.05;
 
-  marker.color.a = 1.0;
-  marker.color.r = 0.6;  // 옅은 하늘색
-  marker.color.g = 0.8;
-  marker.color.b = 1.0;
+    marker.color.a = 1.0; // 불투명도
+    marker.color.r = 0.0; // 빨간색 (속도)
+    marker.color.g = 1.0;
+    marker.color.b = 0.0;
 
-  // 퍼블리시
-  EE_Vel_publisher_->publish(marker);
-}
+    // 퍼블리시
+    EE_Vel_publisher_->publish(marker);
+
+  }
 
 
+  void End_Effector_Force_Publisher()
+  {
+    // Rviz에서 시각화할 Marker 메시지 생성
+    auto marker = visualization_msgs::msg::Marker();
+    marker.header.frame_id = "world";
+    marker.header.stamp = this->get_clock()->now();
+    marker.ns = "EE_Force";
+    marker.id = 0;
+    marker.type = visualization_msgs::msg::Marker::ARROW;
+    marker.action = visualization_msgs::msg::Marker::ADD;
 
-void End_Effector_Force_Publisher()
-{
-  // Rviz에서 시각화할 Marker 메시지 생성
-  auto marker = visualization_msgs::msg::Marker();
-  marker.header.frame_id = "world";
-  marker.header.stamp = this->get_clock()->now();
-  marker.ns = "EE_Force";
-  marker.id = 0;
-  marker.type = visualization_msgs::msg::Marker::ARROW;
-  marker.action = visualization_msgs::msg::Marker::ADD;
+    // 화살표의 시작점과 끝점 설정
+    geometry_msgs::msg::Point start_point, end_point;
+    start_point.x = FK_EE_Pos[0]; // 현재 위치
+    start_point.y = FK_EE_Pos[1];
+    start_point.z = FK_EE_Pos[2];
 
-  // 화살표의 시작점과 끝점 설정
-  geometry_msgs::msg::Point start_point, end_point;
-  start_point.x = FK_EE_Pos[0]; // 현재 위치
-  start_point.y = FK_EE_Pos[1];
-  start_point.z = FK_EE_Pos[2];
+    end_point.x = start_point.x + External_force_sensor_meas_global[0]; // 속도 벡터 방향
+    end_point.y = start_point.y + External_force_sensor_meas_global[1];
+    end_point.z = start_point.z + External_force_sensor_meas_global[2];
 
-  External_force_sensor_meas_global = External_force_sensor_meas_global.normalized() * 0.2;
+    marker.points.push_back(start_point);
+    marker.points.push_back(end_point);
 
-  end_point.x = start_point.x + External_force_sensor_meas_global[0];
-  end_point.y = start_point.y + External_force_sensor_meas_global[1];
-  end_point.z = start_point.z + External_force_sensor_meas_global[2];
+    // 화살표의 색상 및 크기 설정
+    marker.scale.x = 0.02; // 화살표의 줄기 두께
+    marker.scale.y = 0.05; // 화살표의 머리 크기
+    marker.scale.z = 0.05;
 
-  marker.points.push_back(start_point);
-  marker.points.push_back(end_point);
+    marker.color.a = 1.0; // 불투명도
+    marker.color.r = 1.0; // 빨간색 (속도)
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
 
-  // 화살표의 색상 및 크기 설정
-  marker.scale.x = 0.015;
-  marker.scale.y = 0.03;
-  marker.scale.z = 0.03;
-
-  marker.color.a = 1.0;
-  marker.color.r = 1.0;
-  marker.color.g = 0.5;
-  marker.color.b = 0.0;
-
-  // 퍼블리시
-  EE_Force_publisher_->publish(marker);
-}
+    // 퍼블리시
+    EE_Force_publisher_->publish(marker);
+  }
 
   void Normal_vector_estimation_and_visual_Publisher()
   {
@@ -498,7 +364,7 @@ void End_Effector_Force_Publisher()
     start_point.y = FK_EE_Pos[1];
     start_point.z = FK_EE_Pos[2];
 
-    end_point.x = start_point.x + Estimated_normal_Vector[0]; // 속도 벡터 방향
+    end_point.x = start_point.x + Estimated_normal_Vector[0]; // 노말 벡터 방향
     end_point.y = start_point.y + Estimated_normal_Vector[1];
     end_point.z = start_point.z + Estimated_normal_Vector[2];
 
@@ -584,12 +450,12 @@ void Remove_Normal_Frame()
     transform_normal.header.stamp = this->get_clock()->now();
     transform_normal.header.frame_id = "world";
     transform_normal.child_frame_id = "normal_frame"; // 같은 ID를 유지
-    
+
     // 좌표 원점으로 이동
     transform_normal.transform.translation.x = 0;
     transform_normal.transform.translation.y = 0;
     transform_normal.transform.translation.z = 0;
-    
+
     // 단위 Quaternion으로 설정 (즉, 회전 없음)
     transform_normal.transform.rotation.x = 0;
     transform_normal.transform.rotation.y = 0;
@@ -602,7 +468,7 @@ void Remove_Normal_Frame()
 
   void contact_checker()
   {
-    if(External_force_sensor_meas_global.norm() > 0.01 && EE_lin_vel.norm() > 0.01)
+    if(External_force_sensor_meas_global.norm() > 0.001 && EE_lin_vel.norm() > 0.001)
       contact_Flag = true;
     else
       contact_Flag = false;
@@ -659,16 +525,16 @@ void Remove_Normal_Frame()
   {
       // Normal Frame의 X축 벡터 (Estimated_normal_Vector)
       Eigen::Vector3d C_x = Estimated_normal_Vector.normalized();
-      
+
       // X축 회전량 (Yaw) 계산
       double x_axis_yaw_rotation = std::atan2(C_x[1], C_x[0]);
-      
+
       // External Force Sensor 방향 벡터 (Global 기준)
       Eigen::Vector3d force_dir = External_force_sensor_meas_global.normalized();
-      
+
       // Force Vector의 yaw 회전량 (global x축과의 차이)
       double force_yaw_rotation = std::atan2(force_dir[1], force_dir[0]);
-      
+
       // ROS 메시지로 Float64MultiArray로 퍼블리시
       std_msgs::msg::Float64MultiArray yaw_msg;
       yaw_msg.data.push_back(x_axis_yaw_rotation);
@@ -687,20 +553,8 @@ void Remove_Normal_Frame()
 
 
   }
- 
-void joint_state_subsciber_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
-{
-  // Manipulator의 상~ㅌ태!!
-  
-  joint_angle_dot_meas[0] = msg->velocity[0];
-  joint_angle_dot_meas[1] = msg->velocity[1];
-  joint_angle_dot_meas[2] = msg->velocity[2];
-  joint_angle_meas[0] = msg->position[0]; // D-H Parameter!!
-  joint_angle_meas[1] = msg->position[1]; 
-  joint_angle_meas[2] = msg->position[2];
 
-}
- 
+
 void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   // Drone의 상.태~
@@ -734,7 +588,7 @@ void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 }
 
 
-	    
+
 void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 {
 
@@ -746,7 +600,7 @@ void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
         const auto &pose = msg->poses[link_yaw_id];
       global_xyz_meas[0] = pose.position.x;
       global_xyz_meas[1] = pose.position.y;
-      global_xyz_meas[2] = pose.position.z;                        
+      global_xyz_meas[2] = pose.position.z;
     }
     else
     {
@@ -757,7 +611,7 @@ void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 }
 
 void EE_vel_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
-{  
+{
 
     EE_lin_vel[0] = msg->data[0];
     EE_lin_vel[1] = msg->data[1];
@@ -777,20 +631,6 @@ void EE_pos_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
   EE_ang_pos[2] = msg->data[5];
 }
 
-void joint1_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
-{
-    joint_effort_meas[0] = msg->wrench.torque.z;
-}
-
-void joint2_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
-{
-    joint_effort_meas[1] = msg->wrench.torque.z;
-}
-
-void joint3_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
-{
-    joint_effort_meas[2] = msg->wrench.torque.z;
-}
 
 
 void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr msg)
@@ -798,7 +638,7 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
     External_force_sensor_meas[0] = msg->wrench.force.x;
     External_force_sensor_meas[1] = msg->wrench.force.y;
     External_force_sensor_meas[2] = msg->wrench.force.z;
-    // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);    
+    // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);
 
     External_force_sensor_meas_global = Rot_D2G(External_force_sensor_meas, Tw3_Pos[3], Tw3_Pos[4], Tw3_Pos[5]);
     External_force_sensor_meas_global.normalized();
@@ -821,7 +661,7 @@ double Generate_Gaussian_Noise(double mean, double stddev)
     static std::random_device rd;
     static std::mt19937 generator(rd());
     static std::normal_distribution<double> distribution(mean, stddev);
-    
+
     return distribution(generator);
 }
 
@@ -830,7 +670,7 @@ double Generate_Gaussian_Noise(double mean, double stddev)
   rclcpp::TimerBase::SharedPtr timer_visual;
 
 
-  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_; 
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr link_yaw_imu_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr position_subscriber_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr EE_vel_subscriber_;
@@ -853,7 +693,7 @@ double Generate_Gaussian_Noise(double mean, double stddev)
   size_t count_;
   std_msgs::msg::Float64 joint_1_cmd_msg;
   std_msgs::msg::Float64 joint_2_cmd_msg;
-  std_msgs::msg::Float64 joint_3_cmd_msg;    
+  std_msgs::msg::Float64 joint_3_cmd_msg;
   //TODO:: 아래 세 줄 정의 제대로 하기
   ros_gz_interfaces::msg::EntityWrench wrench_msg;
   // msg.entity.name = "link_drone";
@@ -871,7 +711,7 @@ double Generate_Gaussian_Noise(double mean, double stddev)
   Eigen::Vector3d body_xyz_error_d = Eigen::Vector3d::Zero();
   Eigen::Vector3d prev_body_xyz_error = Eigen::Vector3d::Zero();
   Eigen::Vector3d body_force_cmd;
-  Eigen::Vector3d global_force_cmd;  
+  Eigen::Vector3d global_force_cmd;
   Eigen::Matrix3d body_xyz_P = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_xyz_I = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_xyz_D = Eigen::Matrix3d::Zero();
@@ -887,8 +727,8 @@ double Generate_Gaussian_Noise(double mean, double stddev)
   Eigen::Vector3d body_rpy_vel_meas;
   Eigen::Vector3d global_rpy_vel_meas;
   Eigen::Vector3d body_rpy_error_d = Eigen::Vector3d::Zero();
-  Eigen::Vector3d body_torque_cmd;  
-  Eigen::Vector3d global_torque_cmd;  
+  Eigen::Vector3d body_torque_cmd;
+  Eigen::Vector3d global_torque_cmd;
   Eigen::Matrix3d body_rpy_P = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_rpy_I = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_rpy_D = Eigen::Matrix3d::Zero();
@@ -904,9 +744,6 @@ double Generate_Gaussian_Noise(double mean, double stddev)
 
 
   Eigen::Vector3d joint_angle_cmd;
-  Eigen::Vector3d joint_angle_meas;
-  Eigen::Vector3d joint_angle_dot_meas;  
-  Eigen::Vector3d joint_effort_meas;
   Eigen::VectorXd State = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_prev = Eigen::VectorXd::Zero(9);
   Eigen::VectorXd State_dot = Eigen::VectorXd::Zero(9);
@@ -938,7 +775,7 @@ double Generate_Gaussian_Noise(double mean, double stddev)
 
   Eigen::Vector3d EE_global_xyz_cmd;
   Eigen::Vector3d EE_body_rpy_cmd;
-  
+
 
 
 
@@ -953,9 +790,9 @@ double Generate_Gaussian_Noise(double mean, double stddev)
 
     double delta_time = 0.005;
 
-    double l1 = 0.1;
-    double l2 = 0.2;
-    double l3 = 0.2;
+    double l1 = 0.02;
+    double l2 = 0.04;
+    double l3 = 0.035;
 
     bool contact_Flag = false;
 

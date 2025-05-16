@@ -32,8 +32,8 @@ class ign_pubsub : public rclcpp::Node
 {
   public:
     ign_pubsub()
-      : Node("ign_pubsub"), 
-      tf_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(this)), 
+      : Node("ign_pubsub"),
+      tf_broadcaster_(std::make_shared<tf2_ros::TransformBroadcaster>(this)),
       count_(0),
       state_filter(9, 1.0, 0.005), // FilteredVector 초기화
       torque_measured_filter(3, 1, 0.005), // FilteredVector 초기화
@@ -46,12 +46,12 @@ class ign_pubsub : public rclcpp::Node
                                       .durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
       cmd_joint1_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_1/command", qos_settings);
-      cmd_joint2_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_2/command", qos_settings);      
-      cmd_joint3_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_3/command", qos_settings);            
+      cmd_joint2_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_2/command", qos_settings);
+      cmd_joint3_publisher_ = this->create_publisher<std_msgs::msg::Float64>("/joint_3/command", qos_settings);
       wrench_publisher_ = this->create_publisher<ros_gz_interfaces::msg::EntityWrench>("/link_drone/wrench", qos_settings);
       velocity_publisher_ = this->create_publisher<visualization_msgs::msg::Marker>("/velocity_marker", qos_settings);
-      state_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_vector", qos_settings);            
-      state_dot_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_dot_vector", qos_settings);            
+      state_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_vector", qos_settings);
+      state_dot_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_dot_vector", qos_settings);
       commanded_publsiher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/commanded_input_U", qos_settings);
       state_U_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/state_U", qos_settings);
       kroc_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/kroc_data", qos_settings);
@@ -66,8 +66,8 @@ class ign_pubsub : public rclcpp::Node
 
       position_subscriber_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
           "/manipulator/pose_info", qos_settings,
-          std::bind(&ign_pubsub::global_pose_callback, this, std::placeholders::_1));            
-	
+          std::bind(&ign_pubsub::global_pose_callback, this, std::placeholders::_1));
+
 
       // Joint 1 Subscriber
       joint_1_torque_subscriber_ = this->create_subscription<geometry_msgs::msg::WrenchStamped>(
@@ -111,11 +111,11 @@ class ign_pubsub : public rclcpp::Node
       5ms, std::bind(&ign_pubsub::timer_callback, this));
 
 
-    body_xyz_P.diagonal() << 30, 30, 100;
+    body_xyz_P.diagonal() << 100, 100, 500;
     body_xyz_I.diagonal() << 0., 0., 0.;
-    body_xyz_D.diagonal() << 3, 3, 9;
-    body_rpy_P.diagonal() << 10, 10, 4;
-    body_rpy_D.diagonal() << 1, 1, 0.1;
+    body_xyz_D.diagonal() << 10, 10, 50;
+    body_rpy_P.diagonal() << 5, 5, 0.5;
+    body_rpy_D.diagonal() << 0.1, 0.1, 0.01;
       wrench_msg.entity.name = "link_drone"; // 링크 이름
       wrench_msg.entity.type = ros_gz_interfaces::msg::Entity::LINK; // 엔티티 유형: LINK
 
@@ -128,8 +128,8 @@ class ign_pubsub : public rclcpp::Node
     // 현재 시간 계산
       set_state_and_dot();
       set_traj();
-      PID_controller();		
-      data_publish();     	    
+      PID_controller();
+      data_publish();
 
     }
 
@@ -178,14 +178,10 @@ void PID_controller()
 }
 
 
-
-
 void set_traj()
 {
-  const Eigen::Vector3d rod_offset(0.4, 0.0, 0.2);
-  
-  
-      // **Step 2: RPY에서 회전 행렬 생성 (R = Rz * Ry * Rx)**
+  const Eigen::Vector3d rod_offset(0.075, 0.0, -0.02); // MJ: 아주 짜치게 설정된 end effector offset입니다. (rod의 길이)
+
     double roll = body_EE_rpy_cmd[0];
     double pitch = body_EE_rpy_cmd[1];
     double yaw = body_EE_rpy_cmd[2];
@@ -208,13 +204,6 @@ void set_traj()
     body_rpy_cmd[2] = body_rpy_cmd.z();
 
 
-    time_cnt += delta_time;
-
-      if (time_cnt > 5 && time_cnt < 10)
-    {   joint_angle_cmd[0] = 0;
-        joint_angle_cmd[1] = M_PI / 11 * (time_cnt - 5) / 5;
-        joint_angle_cmd[2] = M_PI / 4.5 * (time_cnt - 5) / 5;
-    }
 }
 
 
@@ -222,15 +211,9 @@ void set_traj()
 
 void data_publish()
 {	// publish!!
-
-  RCLCPP_WARN(this->get_logger(), "%lf, %lf, %lf", global_force_cmd[0], global_force_cmd[1], global_force_cmd[2]);
-
-
-
-
   joint_1_cmd_msg.data = joint_angle_cmd[0];
   joint_2_cmd_msg.data = joint_angle_cmd[1];
-  joint_3_cmd_msg.data = joint_angle_cmd[2];	      
+  joint_3_cmd_msg.data = joint_angle_cmd[2];
   wrench_msg.wrench.force.x = global_force_cmd[0];
   wrench_msg.wrench.force.y = global_force_cmd[1];
   wrench_msg.wrench.force.z = global_force_cmd[2];  // 500 N 힘 적용
@@ -239,8 +222,8 @@ void data_publish()
   wrench_msg.wrench.torque.z = global_torque_cmd[2];
 
   cmd_joint1_publisher_->publish(joint_1_cmd_msg);
-  cmd_joint2_publisher_->publish(joint_2_cmd_msg);       
-  cmd_joint3_publisher_->publish(joint_3_cmd_msg);       	      
+  cmd_joint2_publisher_->publish(joint_2_cmd_msg);
+  cmd_joint3_publisher_->publish(joint_3_cmd_msg);
   wrench_publisher_->publish(wrench_msg);
 
 
@@ -322,18 +305,18 @@ void data_publish()
     kroc_publisher_->publish(kroc_data);
     }
 }
- 
+
 void joint_state_subsciber_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
   joint_angle_dot_meas[0] = msg->velocity[0];
   joint_angle_dot_meas[1] = msg->velocity[1];
   joint_angle_dot_meas[2] = msg->velocity[2];
   joint_angle_meas[0] = msg->position[0]; // D-H Parameter!!
-  joint_angle_meas[1] = msg->position[1]; 
+  joint_angle_meas[1] = msg->position[1];
   joint_angle_meas[2] = msg->position[2];
 
 }
- 
+
 void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
 
@@ -368,8 +351,8 @@ void imu_subscriber_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 
 }
 
-	    
-	    
+
+
 void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
 {
 
@@ -381,7 +364,7 @@ void global_pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
         const auto &pose = msg->poses[link_drone];
       global_xyz_meas[0] = pose.position.x;
       global_xyz_meas[1] = pose.position.y;
-      global_xyz_meas[2] = pose.position.z;                        
+      global_xyz_meas[2] = pose.position.z;
     }
     else
     {
@@ -414,7 +397,7 @@ void jointEE_torque_Callback(const geometry_msgs::msg::WrenchStamped::SharedPtr 
     External_force_sensor_meas[0] = msg->wrench.force.x;
     External_force_sensor_meas[1] = msg->wrench.force.y;
     External_force_sensor_meas[2] = msg->wrench.force.z;
-    // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);    
+    // RCLCPP_INFO(this->get_logger(), "EE_FORCE [%lf] [%lf] [%lf]", External_force_sensor_meas[0], External_force_sensor_meas[1], External_force_sensor_meas[2]);
 }
 
 void pinocchio_gravity_Callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
@@ -459,10 +442,10 @@ void set_state_and_dot()
 //  joint_angle_meas_prev = joint_angle_meas;
 
 
-  raw_State_dot << body_xyz_vel[0], body_xyz_vel[1], body_xyz_vel[2], 
-    body_rpy_vel_meas[0], body_rpy_vel_meas[1], body_rpy_vel_meas[2], 
+  raw_State_dot << body_xyz_vel[0], body_xyz_vel[1], body_xyz_vel[2],
+    body_rpy_vel_meas[0], body_rpy_vel_meas[1], body_rpy_vel_meas[2],
     joint_angle_dot_meas[0], joint_angle_dot_meas[1], joint_angle_dot_meas[2];
- 
+
 
     filtered_state_dot = state_filter.apply(raw_State_dot);
 
@@ -475,18 +458,18 @@ void set_state_and_dot()
   rclcpp::TimerBase::SharedPtr timer_visual;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint1_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint2_publisher_;
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint3_publisher_;    
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr x_axis_publisher_;        
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr z_axis_publisher_;    
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr y_axis_publisher_;    
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr roll_axis_publisher_;     
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pitch_axis_publisher_;           
-  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr yaw_axis_publisher_;    
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr cmd_joint3_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr x_axis_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr z_axis_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr y_axis_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr roll_axis_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr pitch_axis_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr yaw_axis_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_dot_publisher_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr state_U_publisher_;
-  rclcpp::Publisher<ros_gz_interfaces::msg::EntityWrench>::SharedPtr wrench_publisher_;    
-  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_; 
+  rclcpp::Publisher<ros_gz_interfaces::msg::EntityWrench>::SharedPtr wrench_publisher_;
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_1_torque_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_2_torque_subscriber_;
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr joint_3_torque_subscriber_;
@@ -502,12 +485,12 @@ void set_state_and_dot()
 
 
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-    
+
 
   size_t count_;
   std_msgs::msg::Float64 joint_1_cmd_msg;
   std_msgs::msg::Float64 joint_2_cmd_msg;
-  std_msgs::msg::Float64 joint_3_cmd_msg;    
+  std_msgs::msg::Float64 joint_3_cmd_msg;
   //TODO:: 아래 세 줄 정의 제대로 하기
   ros_gz_interfaces::msg::EntityWrench wrench_msg;
   // msg.entity.name = "link_drone";
@@ -526,7 +509,7 @@ void set_state_and_dot()
   Eigen::Vector3d global_xyz_cmd = Eigen::Vector3d::Zero();
   Eigen::Vector3d body_EE_rpy_cmd = Eigen::Vector3d::Zero();
   Eigen::Vector3d global_EE_xyz_cmd = Eigen::Vector3d::Zero();
-  
+
   Eigen::Vector3d global_xyz_error;
   Eigen::Vector3d global_xyz_error_integral;
   Eigen::Vector3d global_xyz_error_d;
@@ -537,7 +520,7 @@ void set_state_and_dot()
   Eigen::Vector3d body_xyz_error_d = Eigen::Vector3d::Zero();
   Eigen::Vector3d prev_body_xyz_error = Eigen::Vector3d::Zero();
   Eigen::Vector3d body_force_cmd;
-  Eigen::Vector3d global_force_cmd;  
+  Eigen::Vector3d global_force_cmd;
   Eigen::Matrix3d body_xyz_P = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_xyz_I = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_xyz_D = Eigen::Matrix3d::Zero();
@@ -553,8 +536,8 @@ void set_state_and_dot()
   Eigen::Vector3d body_rpy_vel_meas;
   Eigen::Vector3d global_rpy_vel_meas;
   Eigen::Vector3d body_rpy_error_d = Eigen::Vector3d::Zero();
-  Eigen::Vector3d body_torque_cmd;  
-  Eigen::Vector3d global_torque_cmd;  
+  Eigen::Vector3d body_torque_cmd;
+  Eigen::Vector3d global_torque_cmd;
   Eigen::Matrix3d body_rpy_P = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_rpy_I = Eigen::Matrix3d::Zero();
   Eigen::Matrix3d body_rpy_D = Eigen::Matrix3d::Zero();
@@ -562,14 +545,14 @@ void set_state_and_dot()
   Eigen::VectorXd FK_meas = Eigen::VectorXd::Zero(6);
 
 
-  
+
 
 
   Eigen::Vector3d joint_angle_cmd;
   Eigen::Vector3d joint_angle_meas;
   Eigen::Vector3d joint_angle_meas_prev;
   Eigen::Vector3d joint_angle_vel;
-  Eigen::Vector3d joint_angle_dot_meas;  
+  Eigen::Vector3d joint_angle_dot_meas;
   Eigen::VectorXd joint_effort_meas = Eigen::VectorXd::Zero(3);
   Eigen::VectorXd External_force_sensor_meas = Eigen::VectorXd::Zero(3);
   Eigen::VectorXd State = Eigen::VectorXd::Zero(9);
